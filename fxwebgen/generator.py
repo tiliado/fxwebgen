@@ -69,11 +69,11 @@ class Generator:
             path += '/'
         meta['path'] = meta['canonical_path'] = path
         target = self.output_dir + (path + 'index.html' if path.endswith('/') else path)
+        print(f'Page: "{source}" → "{target}" = {path}')
         template = meta['template']
 
         variables = {}
         variables.update(meta)
-
         variables['datasets'] = datasets = {}
         for name in meta.get('datasets', '').split(','):
             name = name.strip()
@@ -101,6 +101,7 @@ class Generator:
     def copy_static_files(self) -> None:
         for static_dir in self.static_dirs:
             target = os.path.join(self.output_dir, os.path.basename(static_dir))
+            print(f'Dir: "{static_dir}" → "{target}"')
             if os.path.isdir(target):
                 shutil.rmtree(target)
             shutil.copytree(static_dir, target)
