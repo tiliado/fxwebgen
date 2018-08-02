@@ -62,7 +62,7 @@ class Generator:
         meta = page.metadata
         meta.setdefault('title', os.path.splitext(os.path.basename(source))[0])
         meta.setdefault('template', 'page')
-        path = meta.get('path', path)
+        path = meta.get('path', path[:-2] + 'html' if path.endswith('.md') else path)
         if not path.startswith('/'):
             path = '/' + path
         if not path.endswith(('/', '.html', '.htm')):
