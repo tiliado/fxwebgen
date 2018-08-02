@@ -62,13 +62,31 @@ class Generator:
         meta = page.metadata
         meta.setdefault('title', os.path.splitext(os.path.basename(source))[0])
         meta.setdefault('template', 'page')
+
+        url_deprecated = None
+        if 'url' in meta:
+            url_deprecated = meta['url']
+            print(f'Warning: "URL: {url_deprecated}" meta directive is deprecated.')
+            if not url_deprecated.startswith('/'):
+                url_deprecated = '/' + url_deprecated
+
+        save_as_deprecated = None
+        if 'save_as' in meta:
+            save_as_deprecated = meta['save_as']
+            print(f'Warning: "save_as: {save_as_deprecated}" meta directive is deprecated.')
+
         path = meta.get('path', path[:-2] + 'html' if path.endswith('.md') else path)
         if not path.startswith('/'):
             path = '/' + path
         if not path.endswith(('/', '.html', '.htm')):
             path += '/'
-        meta['path'] = meta['canonical_path'] = path
-        target = self.output_dir + (path + 'index.html' if path.endswith('/') else path)
+        meta['path'] = path
+        meta['canonical_path'] = url_deprecated or path
+
+        if save_as_deprecated:
+            target = os.path.join(self.output_dir, save_as_deprecated)
+        else:
+            target = self.output_dir + (path + 'index.html' if path.endswith('/') else path)
         print(f'Page: "{source}" → "{target}" = {path}')
         template = meta['template']
 
