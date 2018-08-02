@@ -84,15 +84,18 @@ class Generator:
         meta['canonical_path'] = url_deprecated or path
 
         if save_as_deprecated:
-            target = os.path.join(self.output_dir, save_as_deprecated)
+            filename_segment = save_as_deprecated
         else:
-            target = self.output_dir + (path + 'index.html' if path.endswith('/') else path)
-        print(f'Page: "{source}" → "{target}" = {path}')
+            filename_segment = (path + 'index.html' if path.endswith('/') else path)[1:]
+        target = os.path.join(self.output_dir, filename_segment)
+        root = ('../' * filename_segment.count('/')).rstrip('/') or '.'
+        print(f'Page: "{source}" → "{target}" = {path} {root}')
         template = meta['template']
 
         variables = {}
         variables.update(meta)
         variables['datasets'] = datasets = {}
+        variables['webroot'] = root
         for name in meta.get('datasets', '').split(','):
             name = name.strip()
             if name:
@@ -110,9 +113,11 @@ class Generator:
         for name, content in snippets.items():
             body = body.replace(f'[Snippet: {name}]', content)
             body = body.replace(f'[snippet: {name}]', content)
-
-        os.makedirs(os.path.dirname(target), exist_ok=True)
         variables['body'] = body
+        self.write_page(target, template, variables)
+
+    def write_page(self, target: str, template: str, variables: dict) -> None:
+        os.makedirs(os.path.dirname(target), exist_ok=True)
         with open(target, "wt") as fh:
             fh.write(self.templater.render([template + '.html'], variables))
 
