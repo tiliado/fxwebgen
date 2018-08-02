@@ -1,0 +1,34 @@
+[MASTER]
+ignore=CVS
+load-plugins=pylint.extensions.bad_builtin,
+             pylint.extensions.check_elif,
+             pylint.extensions.docparams
+
+
+[BASIC]
+good-names=i,
+           j,
+           k,
+           fh,
+           argv,
+           e,
+           m,
+           md,
+           n,
+           p,
+           h5
+
+[MESSAGES CONTROL]
+# TODO: Get rid of these
+disable=missing-docstring,
+        too-few-public-methods,
+        too-many-locals
+
+[FORMAT]
+
+expected-line-ending-format=LF
+indent-after-paren=4
+indent-string='    '
+max-line-length=120
+single-line-class-stmt=no
+single-line-if-stmt=no
