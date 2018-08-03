@@ -34,10 +34,9 @@ ABSOLUTE_LINK_RE = re.compile("^:.+")
 
 
 def replace_absolute_links(_ctx: PostProcessor, page: Page, tree: BeautifulSoup) -> None:
-    for elm in tree.find_all(href=ABSOLUTE_LINK_RE):
-        elm['href'] = page.webroot + "/" + elm.get('href')[1:].lstrip('/')
-    for elm in tree.find_all(src=ABSOLUTE_LINK_RE):
-        elm['src'] = page.webroot + "/" + elm.get('src')[1:].lstrip('/')
+    for attribute in 'href', 'src':
+        for elm in tree.find_all(attrs={attribute: ABSOLUTE_LINK_RE}):
+            elm[attribute] = page.webroot + "/" + elm.get(attribute)[1:].lstrip('/')
 
 
 PELICAN_LINK_RE = re.compile(r"\{filename\}(\.?)(.+)\.md(.*)")
