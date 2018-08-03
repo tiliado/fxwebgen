@@ -20,6 +20,7 @@ class PostProcessor:
             replace_absolute_links,
             replace_pelican_links,
             replace_interlinks,
+            extract_toc,
         ]
 
     def process_page(self, page: Page) -> None:
@@ -70,3 +71,12 @@ def replace_interlinks(ctx: PostProcessor, page: Page, tree: BeautifulSoup) -> N
             assert m
             name = m.group(1)
             elm[attribute] = ctx.interlinks[name] + url[len(name) + 1:]
+
+
+def extract_toc(_ctx: PostProcessor, page: Page, tree: BeautifulSoup) -> None:
+    toc = tree.find('div', class_='toc')
+    if toc:
+        toc.extract()
+        page.toc = toc.decode()
+    else:
+        page.toc = None

@@ -30,6 +30,7 @@ class MarkdownPage(Page):
                 'abbr',
                 'admonition',
                 'fxwebgen.markdown.bootstrap',
+                'toc',
             ],
             lazy_ol=False)
         self.md.inlinePatterns.add('span_class', SpanWithClassPattern(SpanWithClassPattern.PATTERN), '_end')

@@ -10,6 +10,7 @@ class Page:
     source: str
     default_path: str
     body: Optional[str]
+    toc: Optional[str]
     metadata: StrDict
     references: dict
 
@@ -23,6 +24,7 @@ class Page:
         self.body = None
         self.metadata = {}
         self.references = {}
+        self.toc = None
 
     def process(self) -> None:
         raise NotImplementedError

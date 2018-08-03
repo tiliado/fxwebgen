@@ -155,6 +155,7 @@ class Generator:
         variables = {}
         variables.update(page.metadata)
         variables['body'] = page.body
+        variables['toc'] = page.toc
         os.makedirs(os.path.dirname(target), exist_ok=True)
         with open(target, "wt") as fh:
             fh.write(self.templater.render(template + '.html', variables))

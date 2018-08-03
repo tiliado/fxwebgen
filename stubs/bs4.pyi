@@ -12,6 +12,10 @@ class Tag:
                  text: Optional[str] = None, limit: Optional[int] = None, **kwargs: Any) -> ResultSet:
         pass
 
+    def find(self, name: Optional[str] = None, attrs: Optional[dict] = None, recursive: bool = True,
+             text: Optional[str] = None, **kwargs: Any) -> Any:
+        pass
+
 
 class BeautifulSoup(Tag):
     def __init__(self, markup: str = "", features: Any = None, builder: Any = None,
