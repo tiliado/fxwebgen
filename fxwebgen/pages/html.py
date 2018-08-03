@@ -10,9 +10,13 @@ from fxwebgen.pages.base import Page
 
 
 class HtmlPage(Page):
+    @classmethod
+    def test(cls, path: str) -> bool:
+        return path.endswith(('.htm', '.html'))
+
     def process(self) -> None:
         meta = self.metadata
-        with open(self.path) as fh:
+        with open(self.source) as fh:
             data = fh.read()
 
         html = etree.fromstring(data)

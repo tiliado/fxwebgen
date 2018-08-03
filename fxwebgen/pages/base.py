@@ -1,22 +1,40 @@
 # Copyright 2018 Jiří Janoušek <janousek.jiri@gmail.com>
 # Licensed under BSD-2-Clause license - see file LICENSE for details.
 
-from typing import Optional
+from typing import Optional, cast
 
 from fxwebgen.typing import StrDict
 
 
 class Page:
-    path: str
+    source: str
+    default_path: str
     body: Optional[str]
     metadata: StrDict
     references: dict
 
-    def __init__(self, path: str) -> None:
-        self.path = path
+    @classmethod
+    def test(cls, path: str) -> bool:
+        raise NotImplementedError
+
+    def __init__(self, source: str, default_path: str) -> None:
+        self.default_path = default_path
+        self.source = source
         self.body = None
         self.metadata = {}
         self.references = {}
 
     def process(self) -> None:
         raise NotImplementedError
+
+    @property
+    def webroot(self) -> str:
+        return cast(str, self.metadata['webroot'])
+
+    @property
+    def path(self) -> str:
+        return self.metadata.get('path') or self.default_path
+
+    @property
+    def filename(self) -> str:
+        return cast(str, self.metadata['filename'])

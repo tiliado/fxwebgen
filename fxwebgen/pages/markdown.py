@@ -10,10 +10,14 @@ from fxwebgen.pages.base import Page
 
 
 class MarkdownPage(Page):
+    @classmethod
+    def test(cls, path: str) -> bool:
+        return path.endswith(('.md', '.mkd'))
+
     md: markdown.Markdown
 
-    def __init__(self, path: str) -> None:
-        super().__init__(path)
+    def __init__(self, source: str, default_path: str) -> None:
+        super().__init__(source, default_path[:-2] + 'html')
         self.md = markdown.Markdown(
             extensions=[
                 'meta',
@@ -31,7 +35,7 @@ class MarkdownPage(Page):
         self.md.inlinePatterns.add('span_class', SpanWithClassPattern(SpanWithClassPattern.PATTERN), '_end')
 
     def process(self) -> None:
-        with open(self.path) as fh:
+        with open(self.source) as fh:
             data = fh.read()
         md = self.md
         self.body = md.convert(data)
