@@ -7,6 +7,7 @@ import os
 import shutil
 
 from fxwebgen.pages import MarkdownPage, HtmlPage, Page
+from fxwebgen.postprocessor import PostProcessor
 from fxwebgen.templater import Templater
 from fxwebgen.typing import StrDict
 
@@ -15,6 +16,7 @@ from fxwebgen.typing import StrDict
 class Generator:
     output_dir: str
     templater: Templater
+    post_processor: PostProcessor
     pages_dir: Optional[str]
     static_dirs: List[str]
     datasets_dir: Optional[str]
@@ -24,10 +26,12 @@ class Generator:
     page_factories: ClassVar[List[Type[Page]]] = [MarkdownPage, HtmlPage]
 
     def __init__(self, templater: Templater, output_dir: str, *,
+                 post_processor: Optional[PostProcessor] = None,
                  pages_dir: Optional[str] = None,
                  static_dirs: Optional[List[str]] = None,
                  datasets_dir: Optional[str] = None,
                  datasets: Optional[StrDict] = None) -> None:
+        self.post_processor = post_processor or PostProcessor()
         self.datasets_dir = datasets_dir
         self.static_dirs = static_dirs or []
         self.templater = templater
@@ -142,6 +146,7 @@ class Generator:
                 body = body.replace(f'[Snippet: {name}]', content)
                 body = body.replace(f'[snippet: {name}]', content)
         page.body = body
+        self.post_processor.process_page(page)
 
     def _write_page(self, page: Page) -> None:
         template = page.metadata['template']
