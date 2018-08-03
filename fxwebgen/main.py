@@ -5,6 +5,7 @@ import json
 from argparse import ArgumentParser
 from typing import List
 
+from fxwebgen.postprocessor import PostProcessor
 from fxwebgen.templater import create_templater
 from fxwebgen.generator import Generator
 from fxwebgen.config import Config
@@ -22,7 +23,8 @@ def main(argv: List[str]) -> int:
     templater = create_templater(config.templates, global_vars)
     generator = Generator(templater, config.output_dir,
                           pages_dir=config.pages,
-                          static_dirs=config.static)
+                          static_dirs=config.static,
+                          post_processor=PostProcessor(global_vars.get('interlinks')))
     generator.build()
     return 0
 

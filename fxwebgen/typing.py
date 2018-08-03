@@ -5,3 +5,4 @@ from typing import Dict, Any
 
 
 StrDict = Dict[str, Any]  # pylint: disable=invalid-name
+StrStrDict = Dict[str, str]  # pylint: disable=invalid-name
