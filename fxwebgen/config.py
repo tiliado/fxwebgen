@@ -1,142 +1,139 @@
 # Copyright 2018 Jiří Janoušek <janousek.jiri@gmail.com>
 # Licensed under BSD-2-Clause license - see file LICENSE for details.
 
+import json
 import os
 from argparse import ArgumentParser, Namespace
-from typing import Any, Optional, List, Generic, TypeVar, Dict, cast, Tuple
+from typing import Any, Optional, List
 
-T = TypeVar('T')
+from fxwebgen.context import Context
+from fxwebgen.templater import create_templater
 
 
-class Option(Generic[T]):
-    def __init__(self, shortcut: Optional[str], description: str, default: T,
-                 required: bool = True, *, many: bool = False) -> None:
+class Option:
+    def __init__(self, name: str, shortcut: Optional[str], description: str, default: Any,
+                 *, required: bool = True, many: bool = False) -> None:
         self.required = required
         self.many = many
         self.shortcut = shortcut
-        self.name = ''
+        self.name = name
         self.description = description
         self.default = default
 
-    def __get__(self, instance: Any, owner: Any) -> Optional[T]:
-        return cast(Optional[T], instance.__dict__.get(self.name))
 
-    def __set__(self, instance: Any, value: T) -> None:
-        value = self.check(value)
-        instance.__dict__[self.name] = value
+OPT_INPUT_DIR = 'input_dir'
+OPT_OUTPUT_DIR = 'output_dir'
+OPT_GLOBAL_VARS = 'global_vars'
+OPT_TEMPLATES_DIR = 'templates_dir'
+OPT_STATIC_DIRS = 'static_dir'
+OPT_PAGES_DIR = 'pages_dir'
 
-    def __set_name__(self, owner: Any, name: str) -> None:
-        self.name = name
-
-    # pylint: disable=no-self-use
-    def check(self, value: T) -> T:
-        return value
-
-
-class Directory(Option[str]):
-    # pylint: disable=no-self-use
-    def check(self, value: str) -> str:
-        return value.rstrip('/')
+OPTIONS = {opt.name: opt for opt in (
+    Option(OPT_INPUT_DIR, 'i', 'Path to input/root directory [{default}].', '.'),
+    Option(OPT_OUTPUT_DIR, 'o', 'Path to output directory [{default}].', 'build', required=False),
+    Option(OPT_GLOBAL_VARS, 'g', 'Path to global template variables [{default}].', 'data/globals.json', required=False),
+    Option(OPT_PAGES_DIR, 'p', 'Path to a directory with pages [{default}].', 'pages'),
+    Option(OPT_TEMPLATES_DIR, 't', 'Path to templates directory [].', 'templates'),
+    Option(OPT_STATIC_DIRS, 's', 'Path to static files directories.', ['static'], required=False, many=True),
+)}
 
 
-class Directories(Option[List[str]]):
-    # pylint: disable=no-self-use
-    def check(self, values: List[str]) -> List[str]:
-        valid_values = []
-        for value in values:
-            if value:
-                value = value.rstrip('/')
-                if os.path.isdir(value):
-                    valid_values.append(value)
-                else:
-                    raise AssertionError(f'{self.name}: Directory "{value}" does not exist.')
-        return valid_values
+def add_arguments(parser: ArgumentParser) -> None:
+    for option in OPTIONS.values():
+        args = []
+        if option.shortcut:
+            args.append('-' + option.shortcut)
+        long = '--' + option.name.replace('_', '-')
+        if option.many and long.endswith('s'):
+            long = long[:-1]
+        args.append(long)
+        kwargs = {
+            'help': option.description.format(default=option.default),
+            'dest': option.name,
+        }
+        if option.many:
+            kwargs['nargs'] = '*'
+        parser.add_argument(*args, **kwargs)  # type: ignore
 
 
-class File(Option[str]):
-    # pylint: disable=no-self-use
-    def check(self, value: str) -> str:
-        return value.rstrip('/')
+def parse(args: Namespace) -> Context:
+    input_dir = abspath(None, args.input_dir or OPTIONS[OPT_INPUT_DIR].default)
+    output_dir = _get_path(input_dir, args, OPT_OUTPUT_DIR)
+    pages_dir = _get_path(input_dir, args, OPT_PAGES_DIR, ensure_dir=True)
+    templates_dir = _get_path(input_dir, args, OPT_TEMPLATES_DIR, ensure_dir=True)
+    global_vars_file = _get_path(input_dir, args, OPT_GLOBAL_VARS, ensure_file=True, silent=True)
+    static_dirs = _get_paths(input_dir, args, OPT_STATIC_DIRS)
+
+    assert templates_dir and pages_dir and output_dir
+    if global_vars_file:
+        with open(global_vars_file) as fh:
+            global_vars = json.load(fh)
+    else:
+        global_vars = {}
+
+    templater = create_templater(templates_dir, global_vars)
+    return Context(templater, output_dir,
+                   pages_dir=pages_dir,
+                   static_dirs=static_dirs,
+                   interlinks=global_vars.get('interlinks'))
 
 
-class ConfigMeta(type):
-    def __new__(mcs, name: str, bases: Tuple[type, ...], namespace: Dict[str, Any]) -> type:
-        namespace['all_options'] = {name: value for name, value in namespace.items() if isinstance(value, Option)}
-        return super(ConfigMeta, mcs).__new__(mcs, name, bases, namespace)
+def _get_path(base_path: Optional[str], args: Namespace, name: str, *, silent: bool = False,
+              ensure_dir: bool = False, ensure_file: bool = False) -> Optional[str]:
+    value = getattr(args, name)
+    option = OPTIONS[name]
+    if value:
+        path = abspath(base_path, value)
+        silent = False
+    else:
+        path = abspath(base_path, option.default)
+    try:
+        if ensure_dir:
+            assert path and os.path.isdir(path), \
+                f'{name}: Directory "{path}" does not exist.'
+        elif ensure_file:
+            assert path and os.path.isfile(path), \
+                f'{name}: File "{path}" does not exist.'
+        return path.rstrip('/')
+    except AssertionError as e:
+        if option.required:
+            raise
+        elif not silent:
+            print(e)
+    return None
 
 
-class Config(metaclass=ConfigMeta):
-    input_dir = Directory('i', 'Path to input/root directory [{default}].', '.')
-    output_dir = Directory('o', 'Path to output directory [{default}].', 'build', False)
-    global_vars = File('g', 'Path to global template variables [{default}].', 'data/globals.json', False)
-    pages = Directory('p', 'Path to a directory with pages [{default}].', 'pages')
-    templates = Directory('t', 'Path to templates directory [].', 'templates')
-    static = Directories('s', 'Path to static files directories.', ['static'], False, many=True)
-    all_options: Dict[str, Option]
-
-    def add_arguments(self, parser: ArgumentParser) -> None:
-        for option in self.all_options.values():
-            args = []
-            if option.shortcut:
-                args.append('-' + option.shortcut)
-            args.append('--' + option.name.replace('_', '-'))
-            kwargs = {
-                'help': option.description.format(default=option.default),
-            }
-            if option.many:
-                kwargs['nargs'] = '*'
-            parser.add_argument(*args, **kwargs)  # type: ignore
-
-    def set_arguments(self, args: Namespace) -> None:
-        self.input_dir = os.path.abspath(args.input_dir or self.all_options['input_dir'].default)
-        self._set_path(args, 'output_dir')
-        for name in 'pages', 'templates':
-            self._set_path(args, name, ensure_dir=True)
-        self._set_path(args, 'global_vars', ensure_file=True, silent=True)
-        self._set_paths(args, 'static')
-
-    def _set_path(self, args: Namespace, name: str, *, silent: bool = False,
-                  ensure_dir: bool = False, ensure_file: bool = False) -> None:
-        value = getattr(args, name)
-        option = self.all_options[name]
-        if value:
-            path = self.abspath(value)
-            silent = False
-        else:
-            path = self.abspath(option.default)
+def _get_paths(base_path: Optional[str], args: Namespace, name: str, silent: bool = False) -> List[str]:
+    values = getattr(args, name)
+    option = OPTIONS[name]
+    if values:
+        return _check_dirs([abspath(base_path, value) for value in values])
+    else:
         try:
-            if ensure_dir:
-                assert path and os.path.isdir(path), \
-                    f'{name}: Directory "{path}" does not exist.'
-            elif ensure_file:
-                assert path and os.path.isfile(path), \
-                    f'{name}: File "{path}" does not exist.'
-            setattr(self, name, path)
+            return _check_dirs([abspath(base_path, value) for value in option.default])
         except AssertionError as e:
             if option.required:
                 raise
             elif not silent:
                 print(e)
+    return []
 
-    def _set_paths(self, args: Namespace, name: str, silent: bool = False) -> None:
-        values = getattr(args, name)
-        option = self.all_options[name]
-        if values:
-            setattr(self, name, [self.abspath(value) for value in values])
-        else:
-            try:
-                setattr(self, name, [self.abspath(value) for value in option.default])
-            except AssertionError as e:
-                if option.required:
-                    raise
-                elif not silent:
-                    print(e)
 
-    def abspath(self, path: Optional[str]) -> Optional[str]:
-        if not path:
-            return None
-        assert self.input_dir
-        return path if os.path.isabs(path) else os.path.join(self.input_dir, path)
+def abspath(base_path: Optional[str], path: str) -> str:
+    assert path, f'Path must be specified.'
+    assert base_path is None or os.path.isabs(base_path), f'Base path "{base_path}" is not absolute.'
+    if os.path.isabs(path):
+        return path
+    return os.path.join(base_path, path) if base_path else os.path.abspath(path)
 
-    def __repr__(self) -> str:
-        return '[{}]'.format(', '.join(f'{name}: {getattr(self, name)}' for name in self.all_options))
+
+def _check_dirs(dirs: List[str]) -> List[str]:
+    valid_dirs = []
+    for path in dirs:
+        if path:
+            path = path.rstrip('/')
+            if os.path.isdir(path):
+                valid_dirs.append(path)
+            else:
+                raise AssertionError(f'Directory "{path}" does not exist.')
+    return valid_dirs
