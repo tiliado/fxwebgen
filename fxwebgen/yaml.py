@@ -18,6 +18,11 @@ def load(data: str) -> Any:
     return yaml.load(data, Loader=Loader)
 
 
+def load_path(path: str) -> Any:
+    with open(path) as fh:
+        return load_file(fh)
+
+
 def load_file(stream: TextIO) -> Any:
     return yaml.load(stream, Loader=Loader)
 

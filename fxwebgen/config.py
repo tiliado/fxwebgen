@@ -6,6 +6,7 @@ import os
 from argparse import ArgumentParser, Namespace
 from typing import Any, Optional, List
 
+from fxwebgen import yaml
 from fxwebgen.context import Context
 from fxwebgen.templater import create_templater
 
@@ -21,6 +22,7 @@ class Option:
         self.default = default
 
 
+OPT_CONFIG = 'config'
 OPT_INPUT_DIR = 'input_dir'
 OPT_OUTPUT_DIR = 'output_dir'
 OPT_GLOBAL_VARS = 'global_vars'
@@ -29,6 +31,7 @@ OPT_STATIC_DIRS = 'static_dir'
 OPT_PAGES_DIR = 'pages_dir'
 
 OPTIONS = {opt.name: opt for opt in (
+    Option(OPT_CONFIG, 'c', 'Path to config file [{default}].', 'config.yaml'),
     Option(OPT_INPUT_DIR, 'i', 'Path to input/root directory [{default}].', '.'),
     Option(OPT_OUTPUT_DIR, 'o', 'Path to output directory [{default}].', 'build', required=False),
     Option(OPT_GLOBAL_VARS, 'g', 'Path to global template variables [{default}].', 'data/globals.json', required=False),
@@ -57,12 +60,35 @@ def add_arguments(parser: ArgumentParser) -> None:
 
 
 def parse(args: Namespace) -> Context:
-    input_dir = abspath(None, args.input_dir or OPTIONS[OPT_INPUT_DIR].default)
-    output_dir = _get_path(input_dir, args, OPT_OUTPUT_DIR)
-    pages_dir = _get_path(input_dir, args, OPT_PAGES_DIR, ensure_dir=True)
-    templates_dir = _get_path(input_dir, args, OPT_TEMPLATES_DIR, ensure_dir=True)
-    global_vars_file = _get_path(input_dir, args, OPT_GLOBAL_VARS, ensure_file=True, silent=True)
-    static_dirs = _get_paths(input_dir, args, OPT_STATIC_DIRS)
+    config: Any = None
+    # We have input directory as the base path
+    if args.input_dir:
+        input_dir = abspath(None, args.input_dir)
+        # Let's look for config file relative to input dir
+        if args.config:
+            config = yaml.load_path(abspath(input_dir, args.config))
+        else:
+            path = abspath(input_dir, OPTIONS[OPT_INPUT_DIR].default)
+            if os.path.isfile(path):
+                config = yaml.load_path(path)
+    # We don't have input directory, but we have config file as a reference path
+    elif args.config:
+        path = abspath(None, args.config)
+        config = yaml.load_path(path)
+        input_dir = os.path.dirname(path)
+    # Default
+    else:
+        input_dir = abspath(None, OPTIONS[OPT_INPUT_DIR].default)
+
+    if not config:
+        config = {}
+    assert isinstance(config, dict), f'Configuration must be a dictionary, not {type(config)}.'
+
+    output_dir = _get_path(input_dir, args, config, OPT_OUTPUT_DIR)
+    pages_dir = _get_path(input_dir, args, config, OPT_PAGES_DIR, ensure_dir=True)
+    templates_dir = _get_path(input_dir, args, config, OPT_TEMPLATES_DIR, ensure_dir=True)
+    global_vars_file = _get_path(input_dir, args, config, OPT_GLOBAL_VARS, ensure_file=True, silent=True)
+    static_dirs = _get_paths(input_dir, args, config, OPT_STATIC_DIRS, merge=True)
 
     assert templates_dir and pages_dir and output_dir
     if global_vars_file:
@@ -78,9 +104,11 @@ def parse(args: Namespace) -> Context:
                    interlinks=global_vars.get('interlinks'))
 
 
-def _get_path(base_path: Optional[str], args: Namespace, name: str, *, silent: bool = False,
+def _get_path(base_path: Optional[str], args: Namespace, config: dict, name: str, *, silent: bool = False,
               ensure_dir: bool = False, ensure_file: bool = False) -> Optional[str]:
     value = getattr(args, name)
+    if value is None:
+        value = config.get(name)
     option = OPTIONS[name]
     if value:
         path = abspath(base_path, value)
@@ -103,10 +131,25 @@ def _get_path(base_path: Optional[str], args: Namespace, name: str, *, silent: b
     return None
 
 
-def _get_paths(base_path: Optional[str], args: Namespace, name: str, silent: bool = False) -> List[str]:
-    values = getattr(args, name)
+def _get_paths(base_path: Optional[str], args: Namespace, config: dict, name: str,
+               *, silent: bool = False, merge: bool = False) -> List[str]:
+    args_values: List[str] = getattr(args, name, None)
+    config_values = config.get(name)
+    if config_values is not None and not isinstance(config_values, list):
+        config_values = [config_values]
+    if args_values is None and config_values is None:
+        values: Optional[List[str]] = None
+    elif args_values is None:
+        values = config_values
+    elif config_values is None:
+        values = args_values
+    elif merge:
+        values = args_values + config_values
+    else:
+        values = args_values or config_values
+
     option = OPTIONS[name]
-    if values:
+    if values is not None:
         return _check_dirs([abspath(base_path, value) for value in values])
     else:
         try:
@@ -122,6 +165,8 @@ def _get_paths(base_path: Optional[str], args: Namespace, name: str, silent: boo
 def abspath(base_path: Optional[str], path: str) -> str:
     assert path, f'Path must be specified.'
     assert base_path is None or os.path.isabs(base_path), f'Base path "{base_path}" is not absolute.'
+    if path.startswith('~'):
+        path = os.path.expanduser(path)
     if os.path.isabs(path):
         return path
     return os.path.join(base_path, path) if base_path else os.path.abspath(path)
