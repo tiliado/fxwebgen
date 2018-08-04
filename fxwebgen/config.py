@@ -185,6 +185,8 @@ def _get_bool(args: Namespace, config: dict, name: str) -> bool:
     value = getattr(args, name, None)
     if value is None:
         value = config.get(name)
+        if isinstance(value, str):
+            value = _parse_bool(value)
     if value is None:
         value = OPTIONS[name].default
     assert isinstance(value, bool), f'Unexpected type instead of bool: {type(value)}.'
