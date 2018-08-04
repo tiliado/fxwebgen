@@ -178,7 +178,7 @@ def _get_paths(base_path: Optional[str], args: Namespace, config: dict, name: st
 
 
 def _parse_bool(value: Optional[str]) -> Optional[bool]:
-    return None if value is None else (value.strip().lower() in ('yes', 'true'))
+    return None if value is None else (value.strip().lower() in ('yes', 'true', 'on'))
 
 
 def _get_bool(args: Namespace, config: dict, name: str) -> bool:
