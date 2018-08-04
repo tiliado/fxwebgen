@@ -22,13 +22,14 @@ class Context:
                  datasets_dir: Optional[str] = None,
                  datasets: Optional[StrDict] = None,
                  interlinks: Optional[StrStrDict] = None,
-                 enable_snippets: bool = True) -> None:
+                 enable_snippets: bool = True,
+                 default_template: Optional[str] = None) -> None:
         self.datasets_dir = datasets_dir
         self.static_dirs = static_dirs or []
         self.templater = templater
         self.output_dir = output_dir
         self.pages_dir = pages_dir
         self.datasets = datasets or {}
-        self.default_template = 'page'
+        self.default_template = default_template or 'page'
         self.enable_snippets = enable_snippets
         self.interlinks = interlinks or {}

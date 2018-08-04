@@ -30,6 +30,7 @@ OPT_GLOBAL_VARS = 'global_vars'
 OPT_TEMPLATES_DIR = 'templates_dir'
 OPT_STATIC_DIRS = 'static_dir'
 OPT_PAGES_DIR = 'pages_dir'
+OPT_TEMPLATE = 'template'
 OPT_ENABLE_SNIPPETS = 'enable_snippets'
 
 OPTIONS = {opt.name: opt for opt in (
@@ -40,6 +41,7 @@ OPTIONS = {opt.name: opt for opt in (
     Option(OPT_PAGES_DIR, 'p', 'Path to a directory with pages [{default}].', 'pages'),
     Option(OPT_TEMPLATES_DIR, 't', 'Path to templates directory [].', 'templates'),
     Option(OPT_STATIC_DIRS, 's', 'Path to static files directories.', ['static'], required=False, many=True),
+    Option(OPT_TEMPLATE, '', 'The default template name [{default}].', 'page', required=False),
     Option(OPT_ENABLE_SNIPPETS, '', 'Enable or disable snippets [{default}].', True, required=False, is_bool=True),
 )}
 
@@ -97,6 +99,7 @@ def parse(args: Namespace) -> Context:
     global_vars_file = _get_path(input_dir, args, config, OPT_GLOBAL_VARS, ensure_file=True, silent=True)
     static_dirs = _get_paths(input_dir, args, config, OPT_STATIC_DIRS, merge=True)
     enable_snippets = _get_bool(args, config, OPT_ENABLE_SNIPPETS)
+    template = _get_string(args, config, OPT_TEMPLATE)
 
     assert templates_dir and pages_dir and output_dir
     if global_vars_file:
@@ -110,7 +113,8 @@ def parse(args: Namespace) -> Context:
                    pages_dir=pages_dir,
                    static_dirs=static_dirs,
                    interlinks=global_vars.get('interlinks'),
-                   enable_snippets=enable_snippets)
+                   enable_snippets=enable_snippets,
+                   default_template=template)
 
 
 def _get_path(base_path: Optional[str], args: Namespace, config: dict, name: str, *, silent: bool = False,
@@ -182,6 +186,16 @@ def _get_bool(args: Namespace, config: dict, name: str) -> bool:
     if value is None:
         value = OPTIONS[name].default
     assert isinstance(value, bool), f'Unexpected type instead of bool: {type(value)}.'
+    return value
+
+
+def _get_string(args: Namespace, config: dict, name: str) -> str:
+    value = getattr(args, name, None)
+    if value is None:
+        value = config.get(name)
+    if value is None:
+        value = OPTIONS[name].default
+    assert isinstance(value, str), f'Unexpected type instead of string: {type(value)}.'
     return value
 
 
