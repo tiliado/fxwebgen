@@ -4,6 +4,7 @@
 import json
 import os
 from argparse import ArgumentParser, Namespace
+from pprint import pprint
 from typing import Any, Optional, List
 
 from fxwebgen import yaml
@@ -92,6 +93,7 @@ def parse(args: Namespace) -> Context:
     if not config:
         config = {}
     assert isinstance(config, dict), f'Configuration must be a dictionary, not {type(config)}.'
+    pprint(config)
 
     output_dir = _get_path(input_dir, args, config, OPT_OUTPUT_DIR)
     pages_dir = _get_path(input_dir, args, config, OPT_PAGES_DIR, ensure_dir=True)
