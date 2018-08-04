@@ -8,6 +8,10 @@ class ResultSet(list):
 
 
 class Tag:
+    string: str
+
+    def __init__(self, name: str) -> None: ...
+
     def find_all(self, name: Optional[str] = None, attrs: Optional[dict] = None, recursive: bool = True,
                  text: Optional[str] = None, limit: Optional[int] = None, **kwargs: Any) -> ResultSet:
         pass
@@ -15,6 +19,8 @@ class Tag:
     def find(self, name: Optional[str] = None, attrs: Optional[dict] = None, recursive: bool = True,
              text: Optional[str] = None, **kwargs: Any) -> Any:
         pass
+
+    def insert(self, position: int, tag: Tag) -> None: ...
 
 
 class BeautifulSoup(Tag):

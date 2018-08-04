@@ -34,6 +34,7 @@ OPT_PAGES_DIR = 'pages_dir'
 OPT_TEMPLATE = 'template'
 OPT_ENABLE_SNIPPETS = 'enable_snippets'
 OPT_DOWNGRADE_HEADINGS = 'downgrade_headings'
+OPT_TITLE_AS_HEADING = 'title_as_heading'
 
 OPTIONS = {opt.name: opt for opt in (
     Option(OPT_CONFIG, 'c', 'Path to config file [{default}].', 'config.yaml'),
@@ -46,6 +47,8 @@ OPTIONS = {opt.name: opt for opt in (
     Option(OPT_TEMPLATE, '', 'The default template name [{default}].', 'page', required=False),
     Option(OPT_ENABLE_SNIPPETS, '', 'Enable or disable snippets [{default}].', True, required=False, is_bool=True),
     Option(OPT_DOWNGRADE_HEADINGS, '', 'Decrease the level of all headings [{default}].',
+           False, required=False, is_bool=True),
+    Option(OPT_TITLE_AS_HEADING, '', 'Use title as a fallback heading [{default}].',
            False, required=False, is_bool=True),
 )}
 
@@ -105,6 +108,7 @@ def parse(args: Namespace) -> Context:
     static_dirs = _get_paths(input_dir, args, config, OPT_STATIC_DIRS, merge=True)
     enable_snippets = _get_bool(args, config, OPT_ENABLE_SNIPPETS)
     downgrade_headings = _get_bool(args, config, OPT_DOWNGRADE_HEADINGS)
+    title_as_heading = _get_bool(args, config, OPT_TITLE_AS_HEADING)
     template = _get_string(args, config, OPT_TEMPLATE)
 
     assert templates_dir and pages_dir and output_dir
@@ -121,7 +125,8 @@ def parse(args: Namespace) -> Context:
                    interlinks=global_vars.get('interlinks'),
                    enable_snippets=enable_snippets,
                    default_template=template,
-                   downgrade_headings=downgrade_headings)
+                   downgrade_headings=downgrade_headings,
+                   title_as_heading=title_as_heading)
 
 
 def _get_path(base_path: Optional[str], args: Namespace, config: dict, name: str, *, silent: bool = False,

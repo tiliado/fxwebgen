@@ -4,7 +4,7 @@
 import re
 from typing import Callable, List
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 from fxwebgen.context import Context
 from fxwebgen.pages import Page
@@ -20,6 +20,7 @@ class PostProcessor:
             replace_interlinks,
             extract_toc,
             downgrade_headings,
+            add_title_as_heading,
         ]
 
     def process_page(self, ctx: Context, page: Page) -> None:
@@ -87,3 +88,10 @@ def downgrade_headings(ctx: Context, _page: Page, tree: BeautifulSoup) -> None:
             downgraded = f'h{i + 1}'
             for elm in tree.find_all(f'h{i}'):
                 elm.name = downgraded
+
+
+def add_title_as_heading(ctx: Context, page: Page, tree: BeautifulSoup) -> None:
+    if ctx.title_as_heading and tree.find('h1') is None:
+        heading = Tag(name='h1')
+        heading.string = page.metadata['title']
+        tree.insert(0, heading)
