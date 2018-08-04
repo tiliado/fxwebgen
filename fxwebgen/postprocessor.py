@@ -19,6 +19,7 @@ class PostProcessor:
             replace_pelican_links,
             replace_interlinks,
             extract_toc,
+            downgrade_headings,
         ]
 
     def process_page(self, ctx: Context, page: Page) -> None:
@@ -78,3 +79,11 @@ def extract_toc(_ctx: Context, page: Page, tree: BeautifulSoup) -> None:
         page.toc = toc.decode()
     else:
         page.toc = None
+
+
+def downgrade_headings(ctx: Context, _page: Page, tree: BeautifulSoup) -> None:
+    if ctx.downgrade_headings:
+        for i in range(5, 0, -1):
+            downgraded = f'h{i + 1}'
+            for elm in tree.find_all(f'h{i}'):
+                elm.name = downgraded

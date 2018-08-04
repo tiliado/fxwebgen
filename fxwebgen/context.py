@@ -14,6 +14,7 @@ class Context:
     datasets: StrDict
     default_template: str
     enable_snippets: bool
+    downgrade_headings: bool
     interlinks: StrStrDict
 
     def __init__(self, templater: Templater, output_dir: str, *,
@@ -23,6 +24,7 @@ class Context:
                  datasets: Optional[StrDict] = None,
                  interlinks: Optional[StrStrDict] = None,
                  enable_snippets: bool = True,
+                 downgrade_headings: bool = False,
                  default_template: Optional[str] = None) -> None:
         self.datasets_dir = datasets_dir
         self.static_dirs = static_dirs or []
@@ -32,4 +34,5 @@ class Context:
         self.datasets = datasets or {}
         self.default_template = default_template or 'page'
         self.enable_snippets = enable_snippets
+        self.downgrade_headings = downgrade_headings
         self.interlinks = interlinks or {}
