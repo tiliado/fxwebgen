@@ -6,44 +6,23 @@ from typing import List, Any, Optional, Dict, Type, ClassVar
 import os
 import shutil
 
+from fxwebgen.context import Context
 from fxwebgen.pages import MarkdownPage, HtmlPage, Page
 from fxwebgen.postprocessor import PostProcessor
-from fxwebgen.templater import Templater
-from fxwebgen.typing import StrDict
 
 
-# pylint: disable=too-many-instance-attributes
 class Generator:
-    output_dir: str
-    templater: Templater
+    ctx: Context
     post_processor: PostProcessor
-    pages_dir: Optional[str]
-    static_dirs: List[str]
-    datasets_dir: Optional[str]
-    datasets: StrDict
-    default_template: str
-    enable_snippets: bool
     page_factories: ClassVar[List[Type[Page]]] = [MarkdownPage, HtmlPage]
 
-    def __init__(self, templater: Templater, output_dir: str, *,
-                 post_processor: Optional[PostProcessor] = None,
-                 pages_dir: Optional[str] = None,
-                 static_dirs: Optional[List[str]] = None,
-                 datasets_dir: Optional[str] = None,
-                 datasets: Optional[StrDict] = None) -> None:
+    def __init__(self, ctx: Context, *, post_processor: Optional[PostProcessor] = None) -> None:
+        self.ctx = ctx
         self.post_processor = post_processor or PostProcessor()
-        self.datasets_dir = datasets_dir
-        self.static_dirs = static_dirs or []
-        self.templater = templater
-        self.output_dir = output_dir
-        self.pages_dir = pages_dir
-        self.datasets = datasets or {}
-        self.default_template = 'page'
-        self.enable_snippets = True
 
     def purge(self) -> None:
-        if os.path.isdir(self.output_dir):
-            shutil.rmtree(self.output_dir, ignore_errors=True)
+        if os.path.isdir(self.ctx.output_dir):
+            shutil.rmtree(self.ctx.output_dir, ignore_errors=True)
 
     def build(self) -> None:
         self.before_building_pages()
@@ -58,12 +37,12 @@ class Generator:
         pass
 
     def build_pages(self) -> None:
-        if self.pages_dir:
-            for root, _dirs, files in os.walk(self.pages_dir):
+        if self.ctx.pages_dir:
+            for root, _dirs, files in os.walk(self.ctx.pages_dir):
                 for path in files:
                     if path.endswith(('.md', '.html', '.html')):
                         path = os.path.join(root, path)
-                        target = path[len(self.pages_dir):]
+                        target = path[len(self.ctx.pages_dir):]
                         self.build_page(path, target)
 
     def build_page(self, source: str, default_path: str) -> None:
@@ -86,7 +65,7 @@ class Generator:
     def _process_metadata(self, page: Page) -> None:
         meta = page.metadata
         meta.setdefault('title', os.path.splitext(os.path.basename(page.source))[0])
-        meta.setdefault('template', self.default_template)
+        meta.setdefault('template', self.ctx.default_template)
 
         url_deprecated = None
         if 'url' in meta:
@@ -128,29 +107,29 @@ class Generator:
         meta['datasets'] = datasets
 
         snippets: Dict[str, str] = {}
-        if self.enable_snippets:
+        if self.ctx.enable_snippets:
             for original_name in meta.get('snippets', '').split(','):
                 original_name = original_name.strip()
                 normalized_name = original_name.lower().replace(' ', '_').replace('-', '_')
                 if original_name and normalized_name not in snippets:
-                    snippets[original_name] = snippets[normalized_name] = self.templater.render(
+                    snippets[original_name] = snippets[normalized_name] = self.ctx.templater.render(
                         [f'snippets/{normalized_name}.html'], meta)
         meta['snippets'] = snippets
 
     def _process_page(self, page: Page) -> None:
         meta = page.metadata
         body = page.body or ''
-        if self.enable_snippets:
+        if self.ctx.enable_snippets:
             snippets: Dict[str, str] = meta['snippets']
             for name, content in snippets.items():
                 body = body.replace(f'[Snippet: {name}]', content)
                 body = body.replace(f'[snippet: {name}]', content)
         page.body = body
-        self.post_processor.process_page(page)
+        self.post_processor.process_page(self.ctx, page)
 
     def _write_page(self, page: Page) -> None:
         template = page.metadata['template']
-        target = os.path.join(self.output_dir, page.filename)
+        target = os.path.join(self.ctx.output_dir, page.filename)
         print(f'Page: "{page.source}" → "{target}" = {page.path} {page.webroot}')
         variables = {}
         variables.update(page.metadata)
@@ -158,11 +137,11 @@ class Generator:
         variables['toc'] = page.toc
         os.makedirs(os.path.dirname(target), exist_ok=True)
         with open(target, "wt") as fh:
-            fh.write(self.templater.render(template + '.html', variables))
+            fh.write(self.ctx.templater.render(template + '.html', variables))
 
     def copy_static_files(self) -> None:
-        for static_dir in self.static_dirs:
-            target = os.path.join(self.output_dir, os.path.basename(static_dir))
+        for static_dir in self.ctx.static_dirs:
+            target = os.path.join(self.ctx.output_dir, os.path.basename(static_dir))
             print(f'Dir: "{static_dir}" → "{target}"')
             if os.path.isdir(target):
                 shutil.rmtree(target)
@@ -170,13 +149,13 @@ class Generator:
 
     def get_dataset(self, name: str) -> Any:
         try:
-            return self.datasets[name]
+            return self.ctx.datasets[name]
         except KeyError:
-            if self.datasets_dir:
-                path = os.path.join(self.datasets_dir, name + ".json")
+            if self.ctx.datasets_dir:
+                path = os.path.join(self.ctx.datasets_dir, name + ".json")
                 with open(path) as fh:
                     dataset = json.load(fh)
             else:
                 dataset = None
-            self.datasets[name] = dataset
+            self.ctx.datasets[name] = dataset
             return dataset

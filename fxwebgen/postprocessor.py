@@ -2,20 +2,18 @@
 # Licensed under BSD-2-Clause license - see file LICENSE for details.
 
 import re
-from typing import Callable, List, Optional
+from typing import Callable, List
 
 from bs4 import BeautifulSoup
 
+from fxwebgen.context import Context
 from fxwebgen.pages import Page
-from fxwebgen.typing import StrStrDict
 
 
 class PostProcessor:
-    interlinks: StrStrDict
-    post_processors: List[Callable[['PostProcessor', Page, BeautifulSoup], None]]
+    post_processors: List[Callable[[Context, Page, BeautifulSoup], None]]
 
-    def __init__(self, interlinks: Optional[StrStrDict] = None) -> None:
-        self.interlinks = interlinks or {}
+    def __init__(self) -> None:
         self.post_processors = [
             replace_absolute_links,
             replace_pelican_links,
@@ -23,27 +21,27 @@ class PostProcessor:
             extract_toc,
         ]
 
-    def process_page(self, page: Page) -> None:
+    def process_page(self, ctx: Context, page: Page) -> None:
         body = page.body or ''
         tree = BeautifulSoup(body, 'html.parser')
         for func in self.post_processors:
-            func(self, page, tree)
+            func(ctx, page, tree)
         page.body = tree.decode()
 
 
 ABSOLUTE_LINK_RE = re.compile("^:.+")
 
 
-def replace_absolute_links(_ctx: PostProcessor, page: Page, tree: BeautifulSoup) -> None:
+def replace_absolute_links(_ctx: Context, page: Page, tree: BeautifulSoup) -> None:
     for attribute in 'href', 'src':
         for elm in tree.find_all(attrs={attribute: ABSOLUTE_LINK_RE}):
             elm[attribute] = page.webroot + "/" + elm.get(attribute)[1:].lstrip('/')
 
 
-PELICAN_LINK_RE = re.compile(r"\{filename\}(\.?)(.+)\.md(.*)")
+PELICAN_LINK_RE = re.compile(r"{filename}(\.?)(.+)\.md(.*)")
 
 
-def replace_pelican_links(_ctx: PostProcessor, page: Page, tree: BeautifulSoup) -> None:
+def replace_pelican_links(_ctx: Context, page: Page, tree: BeautifulSoup) -> None:
     for link in tree.find_all(href=PELICAN_LINK_RE):
         url = link.get('href')
         print(f'Warning: {page.source}: Pelican links are deprecated: "{url}".')
@@ -61,7 +59,7 @@ def replace_pelican_links(_ctx: PostProcessor, page: Page, tree: BeautifulSoup) 
 INTERLINK_RE = re.compile("(.+?)>")
 
 
-def replace_interlinks(ctx: PostProcessor, page: Page, tree: BeautifulSoup) -> None:
+def replace_interlinks(ctx: Context, page: Page, tree: BeautifulSoup) -> None:
     ctx.interlinks["this"] = page.webroot + "/"
     for attribute in 'href', 'src':
         for elm in tree.find_all(attrs={attribute: INTERLINK_RE}):
@@ -73,7 +71,7 @@ def replace_interlinks(ctx: PostProcessor, page: Page, tree: BeautifulSoup) -> N
             elm[attribute] = ctx.interlinks[name] + url[len(name) + 1:]
 
 
-def extract_toc(_ctx: PostProcessor, page: Page, tree: BeautifulSoup) -> None:
+def extract_toc(_ctx: Context, page: Page, tree: BeautifulSoup) -> None:
     toc = tree.find('div', class_='toc')
     if toc:
         toc.extract()
