@@ -13,7 +13,8 @@ from fxwebgen.templater import create_templater
 
 class Option:
     def __init__(self, name: str, shortcut: Optional[str], description: str, default: Any,
-                 *, required: bool = True, many: bool = False) -> None:
+                 *, required: bool = True, many: bool = False, is_bool: bool = False) -> None:
+        self.is_bool = is_bool
         self.required = required
         self.many = many
         self.shortcut = shortcut
@@ -29,6 +30,7 @@ OPT_GLOBAL_VARS = 'global_vars'
 OPT_TEMPLATES_DIR = 'templates_dir'
 OPT_STATIC_DIRS = 'static_dir'
 OPT_PAGES_DIR = 'pages_dir'
+OPT_ENABLE_SNIPPETS = 'enable_snippets'
 
 OPTIONS = {opt.name: opt for opt in (
     Option(OPT_CONFIG, 'c', 'Path to config file [{default}].', 'config.yaml'),
@@ -38,6 +40,7 @@ OPTIONS = {opt.name: opt for opt in (
     Option(OPT_PAGES_DIR, 'p', 'Path to a directory with pages [{default}].', 'pages'),
     Option(OPT_TEMPLATES_DIR, 't', 'Path to templates directory [].', 'templates'),
     Option(OPT_STATIC_DIRS, 's', 'Path to static files directories.', ['static'], required=False, many=True),
+    Option(OPT_ENABLE_SNIPPETS, '', 'Enable or disable snippets [{default}].', True, required=False, is_bool=True),
 )}
 
 
@@ -50,13 +53,17 @@ def add_arguments(parser: ArgumentParser) -> None:
         if option.many and long.endswith('s'):
             long = long[:-1]
         args.append(long)
-        kwargs = {
-            'help': option.description.format(default=option.default),
-            'dest': option.name,
-        }
+
+        kwargs: dict = {'dest': option.name}
         if option.many:
             kwargs['nargs'] = '*'
-        parser.add_argument(*args, **kwargs)  # type: ignore
+        if option.is_bool:
+            kwargs['type'] = _parse_bool
+            default = 'yes' if option.default else 'no'
+        else:
+            default = option.default
+        kwargs['help'] = option.description.format(default=default)
+        parser.add_argument(*args, **kwargs)
 
 
 def parse(args: Namespace) -> Context:
@@ -89,6 +96,7 @@ def parse(args: Namespace) -> Context:
     templates_dir = _get_path(input_dir, args, config, OPT_TEMPLATES_DIR, ensure_dir=True)
     global_vars_file = _get_path(input_dir, args, config, OPT_GLOBAL_VARS, ensure_file=True, silent=True)
     static_dirs = _get_paths(input_dir, args, config, OPT_STATIC_DIRS, merge=True)
+    enable_snippets = _get_bool(args, config, OPT_ENABLE_SNIPPETS)
 
     assert templates_dir and pages_dir and output_dir
     if global_vars_file:
@@ -101,7 +109,8 @@ def parse(args: Namespace) -> Context:
     return Context(templater, output_dir,
                    pages_dir=pages_dir,
                    static_dirs=static_dirs,
-                   interlinks=global_vars.get('interlinks'))
+                   interlinks=global_vars.get('interlinks'),
+                   enable_snippets=enable_snippets)
 
 
 def _get_path(base_path: Optional[str], args: Namespace, config: dict, name: str, *, silent: bool = False,
@@ -160,6 +169,20 @@ def _get_paths(base_path: Optional[str], args: Namespace, config: dict, name: st
             elif not silent:
                 print(e)
     return []
+
+
+def _parse_bool(value: Optional[str]) -> Optional[bool]:
+    return None if value is None else (value.strip().lower() in ('yes', 'true'))
+
+
+def _get_bool(args: Namespace, config: dict, name: str) -> bool:
+    value = getattr(args, name, None)
+    if value is None:
+        value = config.get(name)
+    if value is None:
+        value = OPTIONS[name].default
+    assert isinstance(value, bool), f'Unexpected type instead of bool: {type(value)}.'
+    return value
 
 
 def abspath(base_path: Optional[str], path: str) -> str:
