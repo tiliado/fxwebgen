@@ -3,7 +3,7 @@
 
 import os
 from argparse import ArgumentParser
-from threading import Thread
+from multiprocessing import Process
 from typing import List
 
 from fxwebgen.postprocessor import PostProcessor
@@ -21,16 +21,22 @@ def main(argv: List[str]) -> int:
     generator = Generator(ctx, post_processor=PostProcessor())
     generator.build()
     if args.serve:
-        os.chdir(ctx.output_dir)
-        server = create_server()
-        thread = Thread(target=server.serve_forever)
-        thread.daemon = True
-        while True:
-            command = input('[R]egenerate [Q]uit ? ').strip().upper()
-            if command == 'R':
-                generator.build()
-            elif command == 'Q':
-                break
-            elif command:
-                print(f'Unknown command: "{command}".')
+        def serve() -> None:
+            os.chdir(ctx.output_dir)
+            server = create_server()
+            server.serve_forever()
+        process = Process(target=serve)
+        process.daemon = True
+        process.start()
+        try:
+            while True:
+                command = input('[R]egenerate [Q]uit ? ').strip().upper()
+                if command == 'R':
+                    generator.build()
+                elif command == 'Q':
+                    break
+                elif command:
+                    print(f'Unknown command: "{command}".')
+        finally:
+            process.terminate()
     return 0
