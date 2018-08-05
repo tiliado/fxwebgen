@@ -7,7 +7,7 @@ from multiprocessing import Process
 from typing import List
 
 from fxwebgen.postprocessor import PostProcessor
-from fxwebgen.generator import Generator
+from fxwebgen.generator import Generator, FORCE_REBUILD_CHOICES, FORCE_PAGES
 from fxwebgen import config
 from fxwebgen.server import create_server
 
@@ -16,13 +16,11 @@ def main(argv: List[str]) -> int:
     parser = ArgumentParser(prog=argv[0])
     config.add_arguments(parser)
     parser.add_argument('--serve', action='store_true', help='Start a HTTP server for the output directory')
-    parser.add_argument('-f', '--force', action='store_true', help='Force rebuild all.')
+    parser.add_argument('-f', '--force', help='Force rebuild.', nargs='+', choices=FORCE_REBUILD_CHOICES)
     args = parser.parse_args(argv[1:])
     ctx = config.parse(args)
     generator = Generator(ctx, post_processor=PostProcessor())
-    if args.force:
-        generator.purge()
-    generator.build()
+    generator.build(force=args.force)
     if args.serve:
         def serve() -> None:
             os.chdir(ctx.output_dir)
@@ -33,8 +31,10 @@ def main(argv: List[str]) -> int:
         process.start()
         try:
             while True:
-                command = input('[R]egenerate [Q]uit ? ').strip().upper()
-                if command == 'R':
+                command = input('[R]egenerate; [Q]uit; [F]orce rebuild pages: ').strip().upper()
+                if command == 'F':
+                    generator.build(force=[FORCE_PAGES])
+                elif command == 'R':
                     generator.build()
                 elif command == 'Q':
                     break

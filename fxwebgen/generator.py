@@ -13,6 +13,12 @@ from fxwebgen.pages import MarkdownPage, HtmlPage, Page
 from fxwebgen.postprocessor import PostProcessor
 from fxwebgen.resources import ResourceManager
 
+FORCE_ALL = 'all'
+FORCE_PAGES = 'pages'
+FORCE_THUMBNAILS = 'thumbnails'
+FORCE_STATIC_FILES = 'static_files'
+FORCE_REBUILD_CHOICES: List[str] = [FORCE_ALL, FORCE_PAGES, FORCE_THUMBNAILS, FORCE_STATIC_FILES]
+
 
 class Generator:
     ctx: Context
@@ -36,12 +42,16 @@ class Generator:
         if os.path.isdir(self.ctx.output_dir):
             shutil.rmtree(self.ctx.output_dir, ignore_errors=True)
 
-    def build(self) -> None:
+    def build(self, force: Optional[List[str]] = None) -> None:
+        if force is None:
+            force = []
+        elif FORCE_ALL in force:
+            force = FORCE_REBUILD_CHOICES
         self.before_building_pages()
-        self.build_pages()
+        self.build_pages(force=FORCE_PAGES in force)
         self.after_building_pages()
-        self.generate_thumbnails()
-        self.copy_static_files()
+        self.generate_thumbnails(force=FORCE_THUMBNAILS in force)
+        self.copy_static_files(force=FORCE_STATIC_FILES in force)
 
     def before_building_pages(self) -> None:
         pass
@@ -49,7 +59,7 @@ class Generator:
     def after_building_pages(self) -> None:
         pass
 
-    def build_pages(self) -> None:
+    def build_pages(self, *, force: bool = False) -> None:
         kind = self.pages_kind
         old_pages = {item.source: item for item in kind.resources}
         old_thumbnails = self.thumbnails
@@ -61,7 +71,7 @@ class Generator:
                 if path.endswith(('.md', '.html', '.html')):
                     path = os.path.join(root, path)
                     resource = old_pages.get(path)
-                    if resource and resource.fresh:
+                    if not force and resource and resource.fresh:
                         self.thumbnails[path] = old_thumbnails.get(path, {})
                         self.resources.add(kind, resource.source, resource.target)
                     else:
@@ -70,7 +80,7 @@ class Generator:
                         self.thumbnails[page.source] = page.thumbnails
                         assert page.target
                         resource = self.resources.add(kind, page.source, page.target)
-                        if not resource.fresh:
+                        if force or not resource.fresh:
                             self.build_page(page)
 
     def parse_page(self, source: str, default_path: str) -> Page:
@@ -174,7 +184,7 @@ class Generator:
         with open(target, "wt") as fh:
             fh.write(self.ctx.templater.render(template + '.html', variables))
 
-    def copy_static_files(self) -> None:
+    def copy_static_files(self, *, force: bool = False) -> None:
         kind = self.static_files_kind
         self.resources.remove_by_kind(kind)
         for static_dir in self.ctx.static_dirs:
@@ -188,7 +198,7 @@ class Generator:
                     source = os.path.join(source_root, path)
                     target = os.path.join(target_root, path)
                     resource = self.resources.add(kind, source, target)
-                    if not resource.fresh:
+                    if force or not resource.fresh:
                         shutil.copy2(source, target)
                 for path in dirs:
                     target = os.path.join(target_root, path)
@@ -207,7 +217,7 @@ class Generator:
             self.ctx.datasets[name] = dataset
             return dataset
 
-    def generate_thumbnails(self) -> None:
+    def generate_thumbnails(self, *, force: bool = False) -> None:
         kind = self.thumbnails_kind
         self.resources.remove_by_kind(kind)
         static_dirs = self.ctx.static_dirs
@@ -220,7 +230,7 @@ class Generator:
                         source = os.path.join(static_dir, thumbnail.original_url[len(prefix):])
                         target = os.path.join(output_dir, thumbnail.filename)
                         resource = self.resources.add(kind, source, target)
-                        if not resource.fresh:
+                        if force or not resource.fresh:
                             print(f'Thumbnail: {source} → {target}.')
                             os.makedirs(os.path.dirname(target), exist_ok=True)
                             imaging.create_thumbnail(source, target, thumbnail.width, thumbnail.height)
