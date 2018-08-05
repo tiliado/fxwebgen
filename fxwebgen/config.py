@@ -118,12 +118,19 @@ def parse(args: Namespace) -> Context:
             global_vars = json.load(fh)
     else:
         global_vars = {}
+    try:
+        global_vars.update(config['variables'])
+    except KeyError:
+        pass
+
+    interlinks = global_vars.get('interlinks', {})
+    interlinks.update(config.get('interlinks', {}))
 
     templater = create_templater(templates_dir, global_vars)
     return Context(templater, output_dir,
                    pages_dir=pages_dir,
                    static_dirs=static_dirs,
-                   interlinks=global_vars.get('interlinks'),
+                   interlinks=interlinks,
                    enable_snippets=enable_snippets,
                    default_template=template,
                    downgrade_headings=downgrade_headings,
