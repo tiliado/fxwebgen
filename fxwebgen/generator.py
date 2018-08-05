@@ -110,6 +110,7 @@ class Generator:
         return page
 
     def _process_metadata(self, page: Page) -> None:
+        path_prefix = self.ctx.path_prefix
         meta = page.metadata
         meta.setdefault('title', os.path.splitext(os.path.basename(page.source))[0])
         meta.setdefault('template', self.ctx.default_template)
@@ -126,13 +127,12 @@ class Generator:
             save_as_deprecated = meta['save_as']
             print(f'Warning: "save_as: {save_as_deprecated}" meta directive is deprecated.')
 
-        path = meta.get('path', page.default_path)
+        path = meta.get('path', url_deprecated or page.default_path)
         if not path.startswith('/'):
             path = '/' + path
         if not path.endswith(('/', '.html', '.htm')):
             path += '/'
-        meta['path'] = path
-        meta['canonical_path'] = url_deprecated or path
+        meta['canonical_path'] = meta['path'] = '/' + path_prefix + path if path_prefix else  path
 
         if save_as_deprecated:
             filename = save_as_deprecated
@@ -142,6 +142,7 @@ class Generator:
         root = ('../' * filename.count('/')).rstrip('/') or '.'
         meta['filename'] = filename
         meta['webroot'] = root
+        meta['path_prefix'] = '/' + path_prefix if path_prefix else ''
         page.target = os.path.join(self.ctx.output_dir, page.filename)
 
     def _load_datasets_for_page(self, page: Page) -> None:
@@ -244,4 +245,4 @@ class Generator:
                     raise ValueError(f'Cannot find {thumbnail.original_url}.')
 
     def remove_stale_files(self) -> None:
-        self.resources.remove_stale_files(self.ctx.output_dir)
+        self.resources.remove_stale_files(self.ctx.output_root)

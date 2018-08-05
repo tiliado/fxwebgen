@@ -23,7 +23,7 @@ def main(argv: List[str]) -> int:
     generator.build(force=args.force)
     if args.serve:
         def serve() -> None:
-            os.chdir(ctx.output_dir)
+            os.chdir(ctx.output_root)
             server = create_server()
             server.serve_forever()
         process = Process(target=serve)
