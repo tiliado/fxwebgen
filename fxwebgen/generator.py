@@ -56,6 +56,7 @@ class Generator:
         self.after_building_pages()
         self.generate_thumbnails(force=FORCE_THUMBNAILS in force)
         self.copy_static_files(force=FORCE_STATIC_FILES in force)
+        self.remove_stale_files()
 
     def before_building_pages(self) -> None:
         pass
@@ -243,6 +244,4 @@ class Generator:
                     raise ValueError(f'Cannot find {thumbnail.original_url}.')
 
     def remove_stale_files(self) -> None:
-        for static_dir in self.ctx.static_dirs:
-            target_dir = os.path.join(self.ctx.output_dir, os.path.basename(static_dir))
-            self.resources.remove_stale_files(target_dir)
+        self.resources.remove_stale_files(self.ctx.output_dir)
