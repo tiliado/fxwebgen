@@ -2,15 +2,21 @@
 # Licensed under BSD-2-Clause license - see file LICENSE for details.
 
 import os
-from typing import Dict
+from collections import defaultdict
+from typing import Dict, List, Set
 
 from fxwebgen.utils import file_mtime
 
 
 class Resource:
-    def __init__(self, source: str, target: str) -> None:
+    kind: 'Kind'
+    source: str
+    target: str
+
+    def __init__(self, kind: 'Kind', source: str, target: str) -> None:
         self.source = source
         self.target = target
+        self.kind = kind
 
     @property
     def fresh(self) -> bool:
@@ -23,23 +29,72 @@ class Resource:
         return os.path.isfile(self.source)
 
 
+class Kind:
+    kind: int
+    name: str
+    resources: Set[Resource]
+
+    def __init__(self, kind: int, name: str) -> None:
+        self.name = name
+        self.kind = kind
+        self.resources = set()
+
+    def add(self, resource: Resource) -> None:
+        self.resources.add(resource)
+
+    def remove(self, resource: Resource) -> None:
+        self.resources.remove(resource)
+        del resource.kind
+
+    def clear(self) -> None:
+        self.resources.clear()
+
+    def __str__(self) -> str:
+        return f'[Kind: {self.kind}, {self.name}, {len(self.resources)}]'
+
+    __repr__ = __str__
+
+
 class ResourceManager:
-    sources: Dict[str, Resource]
+    sources: Dict[str, Set[Resource]]
     targets: Dict[str, Resource]
+    kinds: List[Kind]
 
     def __init__(self) -> None:
-        self.sources = {}
+        self.sources = defaultdict(set)
         self.targets = {}
+        self.kinds = []
 
-    def add(self, source: str, target: str) -> Resource:
-        resource = Resource(source, target)
-        self.sources[resource.source] = resource
-        self.targets[resource.target] = resource
+    def add_kind(self, name: str) -> Kind:
+        kind = Kind(len(self.kinds), name)
+        self.kinds.append(kind)
+        return kind
+
+    def add(self, kind: Kind, source: str, target: str) -> Resource:
+        resource = self.targets.get(target)
+        if resource:
+            if resource.source != source:
+                self.sources[resource.source].remove(resource)
+                resource.source = source
+                self.sources[source].add(resource)
+        else:
+            resource = Resource(kind, source, target)
+            self.sources[resource.source].add(resource)
+            self.targets[resource.target] = resource
+            kind.add(resource)
         return resource
 
     def remove(self, resource: Resource) -> None:
-        del self.sources[resource.source]
+        self.sources[resource.source].remove(resource)
         del self.targets[resource.target]
+        resource.kind.remove(resource)
+
+    def remove_by_kind(self, kind: Kind) -> None:
+        for resource in kind.resources:
+            self.sources[resource.source].remove(resource)
+            del self.targets[resource.target]
+            del resource.kind
+        kind.clear()
 
     def remove_stale_files(self, target_dir: str) -> None:
         if os.path.isdir(target_dir):

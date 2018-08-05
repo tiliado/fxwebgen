@@ -28,6 +28,8 @@ class Generator:
         self.post_processor = post_processor or PostProcessor()
         self.thumbnails = {}
         self.resources = resources or ResourceManager()
+        self.static_files_kind = self.resources.add_kind('static_files')
+        self.thumbnails_kind = self.resources.add_kind('thumbnails')
 
     def purge(self) -> None:
         if os.path.isdir(self.ctx.output_dir):
@@ -151,10 +153,11 @@ class Generator:
             fh.write(self.ctx.templater.render(template + '.html', variables))
 
     def copy_static_files(self) -> None:
+        kind = self.static_files_kind
+        self.resources.remove_by_kind(kind)
         for static_dir in self.ctx.static_dirs:
             target_dir = os.path.join(self.ctx.output_dir, os.path.basename(static_dir))
             print(f'Dir: "{static_dir}" → "{target_dir}"')
-            self.resources.remove_stale_files(target_dir)
             os.makedirs(target_dir, exist_ok=True)
             prefix_len = len(static_dir) + 1
             for source_root, dirs, files in os.walk(static_dir):
@@ -162,7 +165,7 @@ class Generator:
                 for path in files:
                     source = os.path.join(source_root, path)
                     target = os.path.join(target_root, path)
-                    resource = self.resources.add(source, target)
+                    resource = self.resources.add(kind, source, target)
                     if not resource.fresh:
                         shutil.copy2(source, target)
                 for path in dirs:
@@ -183,6 +186,8 @@ class Generator:
             return dataset
 
     def generate_thumbnails(self) -> None:
+        kind = self.thumbnails_kind
+        self.resources.remove_by_kind(kind)
         static_dirs = self.ctx.static_dirs
         output_dir = self.ctx.output_dir
         for thumbnail in self.thumbnails.values():
@@ -191,10 +196,15 @@ class Generator:
                 if thumbnail.original_url.startswith(prefix):
                     source = os.path.join(static_dir, thumbnail.original_url[len(prefix):])
                     target = os.path.join(output_dir, thumbnail.filename)
-                    resource = self.resources.add(source, target)
+                    resource = self.resources.add(kind, source, target)
                     if not resource.fresh:
                         print(f'Thumbnail: {source} → {target}.')
                         imaging.create_thumbnail(source, target, thumbnail.width, thumbnail.height)
                     break
             else:
                 raise ValueError(f'Cannot find {thumbnail.original_url}.')
+
+    def remove_stale_files(self) -> None:
+        for static_dir in self.ctx.static_dirs:
+            target_dir = os.path.join(self.ctx.output_dir, os.path.basename(static_dir))
+            self.resources.remove_stale_files(target_dir)
