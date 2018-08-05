@@ -8,8 +8,8 @@ DEFAULT_PORT = 8000
 DEFAULT_HOST = '127.0.0.1'
 
 
-def serve(host: Optional[str] = None, port: Optional[int] = None) -> None:
+def create_server(host: Optional[str] = None, port: Optional[int] = None) -> HTTPServer:
     address = (host or DEFAULT_HOST, port or DEFAULT_PORT)
     httpd = HTTPServer(address, SimpleHTTPRequestHandler)
     print(f'Serving on http://{address[0]}:{address[1]} ...')
-    httpd.serve_forever()
+    return httpd
