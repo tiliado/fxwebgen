@@ -7,8 +7,10 @@ from fxwebgen.objects import Thumbnail
 from fxwebgen.typing import StrDict
 
 
+# pylint: disable=too-many-instance-attributes
 class Page:
     source: str
+    target: Optional[str]
     default_path: str
     body: Optional[str]
     toc: Optional[str]
@@ -28,6 +30,7 @@ class Page:
         self.references = {}
         self.thumbnails = {}
         self.toc = None
+        self.target = None
 
     def process(self) -> None:
         raise NotImplementedError

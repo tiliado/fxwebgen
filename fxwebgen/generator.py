@@ -18,7 +18,7 @@ class Generator:
     ctx: Context
     post_processor: PostProcessor
     page_factories: ClassVar[List[Type[Page]]] = [MarkdownPage, HtmlPage]
-    thumbnails: Dict[str, Thumbnail]
+    thumbnails: Dict[str, Dict[str, Thumbnail]]
     resources: ResourceManager
 
     def __init__(self, ctx: Context, *,
@@ -28,6 +28,7 @@ class Generator:
         self.post_processor = post_processor or PostProcessor()
         self.thumbnails = {}
         self.resources = resources or ResourceManager()
+        self.pages_kind = self.resources.add_kind('pages')
         self.static_files_kind = self.resources.add_kind('static_files')
         self.thumbnails_kind = self.resources.add_kind('thumbnails')
 
@@ -49,21 +50,39 @@ class Generator:
         pass
 
     def build_pages(self) -> None:
-        if self.ctx.pages_dir:
-            for root, _dirs, files in os.walk(self.ctx.pages_dir):
-                for path in files:
-                    if path.endswith(('.md', '.html', '.html')):
-                        path = os.path.join(root, path)
-                        target = path[len(self.ctx.pages_dir):]
-                        self.build_page(path, target)
+        kind = self.pages_kind
+        old_pages = {item.source: item for item in kind.resources}
+        old_thumbnails = self.thumbnails
+        self.thumbnails = {}
+        self.resources.remove_by_kind(kind)
+        assert self.ctx.pages_dir
+        for root, _dirs, files in os.walk(self.ctx.pages_dir):
+            for path in files:
+                if path.endswith(('.md', '.html', '.html')):
+                    path = os.path.join(root, path)
+                    resource = old_pages.get(path)
+                    if resource and resource.fresh:
+                        self.thumbnails[path] = old_thumbnails.get(path, {})
+                        self.resources.add(kind, resource.source, resource.target)
+                    else:
+                        default_path = path[len(self.ctx.pages_dir):]
+                        page = self.parse_page(path, default_path)
+                        self.thumbnails[page.source] = page.thumbnails
+                        assert page.target
+                        resource = self.resources.add(kind, page.source, page.target)
+                        if not resource.fresh:
+                            self.build_page(page)
 
-    def build_page(self, source: str, default_path: str) -> None:
+    def parse_page(self, source: str, default_path: str) -> Page:
         page = self._process_source(source, default_path)
         self._process_metadata(page)
+        return page
+
+    def build_page(self, page: Page) -> Page:
         self._load_datasets_for_page(page)
         self._process_page(page)
         self._write_page(page)
-        self.thumbnails.update(page.thumbnails)
+        return page
 
     def _process_source(self, source: str, default_path: str) -> Page:
         page = None
@@ -104,9 +123,11 @@ class Generator:
             filename = save_as_deprecated
         else:
             filename = (path + 'index.html' if path.endswith('/') else path)[1:]
+
         root = ('../' * filename.count('/')).rstrip('/') or '.'
         meta['filename'] = filename
         meta['webroot'] = root
+        page.target = os.path.join(self.ctx.output_dir, page.filename)
 
     def _load_datasets_for_page(self, page: Page) -> None:
         meta = page.metadata
@@ -142,7 +163,8 @@ class Generator:
 
     def _write_page(self, page: Page) -> None:
         template = page.metadata['template']
-        target = os.path.join(self.ctx.output_dir, page.filename)
+        target = page.target
+        assert target
         print(f'Page: "{page.source}" → "{target}" = {page.path} {page.webroot}')
         variables = {}
         variables.update(page.metadata)
@@ -190,19 +212,20 @@ class Generator:
         self.resources.remove_by_kind(kind)
         static_dirs = self.ctx.static_dirs
         output_dir = self.ctx.output_dir
-        for thumbnail in self.thumbnails.values():
-            for static_dir in static_dirs:
-                prefix = os.path.basename(static_dir) + '/'
-                if thumbnail.original_url.startswith(prefix):
-                    source = os.path.join(static_dir, thumbnail.original_url[len(prefix):])
-                    target = os.path.join(output_dir, thumbnail.filename)
-                    resource = self.resources.add(kind, source, target)
-                    if not resource.fresh:
-                        print(f'Thumbnail: {source} → {target}.')
-                        imaging.create_thumbnail(source, target, thumbnail.width, thumbnail.height)
-                    break
-            else:
-                raise ValueError(f'Cannot find {thumbnail.original_url}.')
+        for thumbnails in self.thumbnails.values():
+            for thumbnail in thumbnails.values():
+                for static_dir in static_dirs:
+                    prefix = os.path.basename(static_dir) + '/'
+                    if thumbnail.original_url.startswith(prefix):
+                        source = os.path.join(static_dir, thumbnail.original_url[len(prefix):])
+                        target = os.path.join(output_dir, thumbnail.filename)
+                        resource = self.resources.add(kind, source, target)
+                        if not resource.fresh:
+                            print(f'Thumbnail: {source} → {target}.')
+                            imaging.create_thumbnail(source, target, thumbnail.width, thumbnail.height)
+                        break
+                else:
+                    raise ValueError(f'Cannot find {thumbnail.original_url}.')
 
     def remove_stale_files(self) -> None:
         for static_dir in self.ctx.static_dirs:
