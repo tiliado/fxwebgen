@@ -16,9 +16,12 @@ def main(argv: List[str]) -> int:
     parser = ArgumentParser(prog=argv[0])
     config.add_arguments(parser)
     parser.add_argument('--serve', action='store_true', help='Start a HTTP server for the output directory')
+    parser.add_argument('-f', '--force', action='store_true', help='Force rebuild all.')
     args = parser.parse_args(argv[1:])
     ctx = config.parse(args)
     generator = Generator(ctx, post_processor=PostProcessor())
+    if args.force:
+        generator.purge()
     generator.build()
     if args.serve:
         def serve() -> None:
