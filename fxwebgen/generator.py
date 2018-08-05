@@ -11,6 +11,7 @@ from fxwebgen.context import Context
 from fxwebgen.objects import Thumbnail
 from fxwebgen.pages import MarkdownPage, HtmlPage, Page
 from fxwebgen.postprocessor import PostProcessor
+from fxwebgen.resources import ResourceManager
 
 
 class Generator:
@@ -18,11 +19,15 @@ class Generator:
     post_processor: PostProcessor
     page_factories: ClassVar[List[Type[Page]]] = [MarkdownPage, HtmlPage]
     thumbnails: Dict[str, Thumbnail]
+    resources: ResourceManager
 
-    def __init__(self, ctx: Context, *, post_processor: Optional[PostProcessor] = None) -> None:
+    def __init__(self, ctx: Context, *,
+                 post_processor: Optional[PostProcessor] = None,
+                 resources: Optional[ResourceManager] = None) -> None:
         self.ctx = ctx
         self.post_processor = post_processor or PostProcessor()
         self.thumbnails = {}
+        self.resources = resources or ResourceManager()
 
     def purge(self) -> None:
         if os.path.isdir(self.ctx.output_dir):
@@ -32,8 +37,8 @@ class Generator:
         self.before_building_pages()
         self.build_pages()
         self.after_building_pages()
-        self.copy_static_files()
         self.generate_thumbnails()
+        self.copy_static_files()
 
     def before_building_pages(self) -> None:
         pass
@@ -147,11 +152,22 @@ class Generator:
 
     def copy_static_files(self) -> None:
         for static_dir in self.ctx.static_dirs:
-            target = os.path.join(self.ctx.output_dir, os.path.basename(static_dir))
-            print(f'Dir: "{static_dir}" → "{target}"')
-            if os.path.isdir(target):
-                shutil.rmtree(target)
-            shutil.copytree(static_dir, target)
+            target_dir = os.path.join(self.ctx.output_dir, os.path.basename(static_dir))
+            print(f'Dir: "{static_dir}" → "{target_dir}"')
+            self.resources.remove_stale_files(target_dir)
+            os.makedirs(target_dir, exist_ok=True)
+            prefix_len = len(static_dir) + 1
+            for source_root, dirs, files in os.walk(static_dir):
+                target_root = os.path.join(target_dir, source_root[prefix_len:])
+                for path in files:
+                    source = os.path.join(source_root, path)
+                    target = os.path.join(target_root, path)
+                    resource = self.resources.add(source, target)
+                    if not resource.fresh:
+                        shutil.copy2(source, target)
+                for path in dirs:
+                    target = os.path.join(target_root, path)
+                    os.makedirs(target, exist_ok=True)
 
     def get_dataset(self, name: str) -> Any:
         try:
@@ -175,8 +191,10 @@ class Generator:
                 if thumbnail.original_url.startswith(prefix):
                     source = os.path.join(static_dir, thumbnail.original_url[len(prefix):])
                     target = os.path.join(output_dir, thumbnail.filename)
-                    print(f'Thumbnail: {source} → {target}.')
-                    imaging.create_thumbnail(source, target, thumbnail.width, thumbnail.height)
+                    resource = self.resources.add(source, target)
+                    if not resource.fresh:
+                        print(f'Thumbnail: {source} → {target}.')
+                        imaging.create_thumbnail(source, target, thumbnail.width, thumbnail.height)
                     break
             else:
                 raise ValueError(f'Cannot find {thumbnail.original_url}.')
