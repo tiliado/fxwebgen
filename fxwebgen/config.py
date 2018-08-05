@@ -138,6 +138,7 @@ def parse(args: Namespace) -> Context:
                    default_template=template,
                    downgrade_headings=downgrade_headings,
                    title_as_heading=title_as_heading,
+                   global_vars=global_vars,
                    path_prefix=path_prefix)
 
 

@@ -17,12 +17,14 @@ class Page:
     metadata: StrDict
     references: dict
     thumbnails: Dict[str, Thumbnail]
+    variables: dict
 
     @classmethod
     def test(cls, path: str) -> bool:
         raise NotImplementedError
 
-    def __init__(self, source: str, default_path: str) -> None:
+    def __init__(self, source: str, default_path: str, variables: dict) -> None:
+        self.variables = variables
         self.default_path = default_path
         self.source = source
         self.body = None

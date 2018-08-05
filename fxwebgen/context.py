@@ -23,6 +23,7 @@ class Context:
     title_as_heading: bool
     interlinks: StrStrDict
     path_prefix: str
+    global_vars: dict
 
     def __init__(self, templater: Templater, output_root: str, *,
                  pages_dir: Optional[str] = None,
@@ -34,7 +35,9 @@ class Context:
                  downgrade_headings: bool = False,
                  title_as_heading: bool = False,
                  default_template: Optional[str] = None,
+                 global_vars: Optional[dict] = None,
                  path_prefix: Optional[str] = None) -> None:
+        self.global_vars = global_vars if global_vars is not None else {}
         self.datasets_dir = datasets_dir
         self.static_dirs = static_dirs or []
         self.templater = templater
