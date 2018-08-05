@@ -17,7 +17,8 @@ FORCE_ALL = 'all'
 FORCE_PAGES = 'pages'
 FORCE_THUMBNAILS = 'thumbnails'
 FORCE_STATIC_FILES = 'static_files'
-FORCE_REBUILD_CHOICES: List[str] = [FORCE_ALL, FORCE_PAGES, FORCE_THUMBNAILS, FORCE_STATIC_FILES]
+FORCE_TEMPLATE = 'template'
+FORCE_REBUILD_CHOICES: List[str] = [FORCE_ALL, FORCE_PAGES, FORCE_THUMBNAILS, FORCE_STATIC_FILES, FORCE_TEMPLATE]
 
 
 class Generator:
@@ -48,6 +49,9 @@ class Generator:
         elif FORCE_ALL in force:
             force = FORCE_REBUILD_CHOICES
         self.before_building_pages()
+        if FORCE_TEMPLATE in force:
+            self.ctx.templater.clear_cache()
+            force.append(FORCE_PAGES)
         self.build_pages(force=FORCE_PAGES in force)
         self.after_building_pages()
         self.generate_thumbnails(force=FORCE_THUMBNAILS in force)

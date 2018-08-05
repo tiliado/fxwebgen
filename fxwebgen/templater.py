@@ -32,6 +32,9 @@ class Templater:
         self.env = env
         self.templates = {}
 
+    def clear_cache(self) -> None:
+        self.templates.clear()
+
     def load_template_data(self, name: str) -> dict:
         path = os.path.join(self.template_dir, os.path.splitext(name)[0] + '.json')
         if os.path.isfile(path):

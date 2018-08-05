@@ -7,7 +7,7 @@ from multiprocessing import Process
 from typing import List
 
 from fxwebgen.postprocessor import PostProcessor
-from fxwebgen.generator import Generator, FORCE_REBUILD_CHOICES, FORCE_PAGES
+from fxwebgen.generator import Generator, FORCE_REBUILD_CHOICES, FORCE_PAGES, FORCE_TEMPLATE
 from fxwebgen import config
 from fxwebgen.server import create_server
 
@@ -31,9 +31,11 @@ def main(argv: List[str]) -> int:
         process.start()
         try:
             while True:
-                command = input('[R]egenerate; [Q]uit; [F]orce rebuild pages: ').strip().upper()
-                if command == 'F':
+                command = input('[R]egenerate [Q]uit | Force rebuild: [P]ages, [T]emplate: ').strip().upper()
+                if command == 'P':
                     generator.build(force=[FORCE_PAGES])
+                if command == 'T':
+                    generator.build(force=[FORCE_TEMPLATE])
                 elif command == 'R':
                     generator.build()
                 elif command == 'Q':
