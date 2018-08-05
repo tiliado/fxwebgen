@@ -222,6 +222,7 @@ class Generator:
                         resource = self.resources.add(kind, source, target)
                         if not resource.fresh:
                             print(f'Thumbnail: {source} → {target}.')
+                            os.makedirs(os.path.dirname(target), exist_ok=True)
                             imaging.create_thumbnail(source, target, thumbnail.width, thumbnail.height)
                         break
                 else:
