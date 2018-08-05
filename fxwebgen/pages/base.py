@@ -1,8 +1,9 @@
 # Copyright 2018 Jiří Janoušek <janousek.jiri@gmail.com>
 # Licensed under BSD-2-Clause license - see file LICENSE for details.
 
-from typing import Optional, cast
+from typing import Optional, cast, Dict
 
+from fxwebgen.objects import Thumbnail
 from fxwebgen.typing import StrDict
 
 
@@ -13,6 +14,7 @@ class Page:
     toc: Optional[str]
     metadata: StrDict
     references: dict
+    thumbnails: Dict[str, Thumbnail]
 
     @classmethod
     def test(cls, path: str) -> bool:
@@ -24,6 +26,7 @@ class Page:
         self.body = None
         self.metadata = {}
         self.references = {}
+        self.thumbnails = {}
         self.toc = None
 
     def process(self) -> None:

@@ -6,7 +6,9 @@ from typing import List, Any, Optional, Dict, Type, ClassVar
 import os
 import shutil
 
+from fxwebgen import imaging
 from fxwebgen.context import Context
+from fxwebgen.objects import Thumbnail
 from fxwebgen.pages import MarkdownPage, HtmlPage, Page
 from fxwebgen.postprocessor import PostProcessor
 
@@ -15,10 +17,12 @@ class Generator:
     ctx: Context
     post_processor: PostProcessor
     page_factories: ClassVar[List[Type[Page]]] = [MarkdownPage, HtmlPage]
+    thumbnails: Dict[str, Thumbnail]
 
     def __init__(self, ctx: Context, *, post_processor: Optional[PostProcessor] = None) -> None:
         self.ctx = ctx
         self.post_processor = post_processor or PostProcessor()
+        self.thumbnails = {}
 
     def purge(self) -> None:
         if os.path.isdir(self.ctx.output_dir):
@@ -29,6 +33,7 @@ class Generator:
         self.build_pages()
         self.after_building_pages()
         self.copy_static_files()
+        self.generate_thumbnails()
 
     def before_building_pages(self) -> None:
         pass
@@ -51,6 +56,7 @@ class Generator:
         self._load_datasets_for_page(page)
         self._process_page(page)
         self._write_page(page)
+        self.thumbnails.update(page.thumbnails)
 
     def _process_source(self, source: str, default_path: str) -> Page:
         page = None
@@ -159,3 +165,18 @@ class Generator:
                 dataset = None
             self.ctx.datasets[name] = dataset
             return dataset
+
+    def generate_thumbnails(self) -> None:
+        static_dirs = self.ctx.static_dirs
+        output_dir = self.ctx.output_dir
+        for thumbnail in self.thumbnails.values():
+            for static_dir in static_dirs:
+                prefix = os.path.basename(static_dir) + '/'
+                if thumbnail.original_url.startswith(prefix):
+                    source = os.path.join(static_dir, thumbnail.original_url[len(prefix):])
+                    target = os.path.join(output_dir, thumbnail.filename)
+                    print(f'Thumbnail: {source} → {target}.')
+                    imaging.create_thumbnail(source, target, thumbnail.width, thumbnail.height)
+                    break
+            else:
+                raise ValueError(f'Cannot find {thumbnail.original_url}.')

@@ -30,6 +30,7 @@ class MarkdownPage(Page):
                 'abbr',
                 'admonition',
                 'fxwebgen.markdown.bootstrap',
+                'fxwebgen.markdown.imagegallery',
                 'toc',
             ],
             lazy_ol=False)
@@ -47,6 +48,7 @@ class MarkdownPage(Page):
         except AttributeError:
             pass
         self.references = md.references
+        self.thumbnails.update(getattr(md, 'thumbnails', {}))
 
 
 class SpanWithClassPattern(markdown.inlinepatterns.Pattern):
