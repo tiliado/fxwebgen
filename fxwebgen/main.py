@@ -34,7 +34,7 @@ def main(argv: List[str]) -> int:
                 command = input('[R]egenerate [Q]uit | Force rebuild: [P]ages, [T]emplate: ').strip().upper()
                 if command == 'P':
                     generator.build(force=[FORCE_PAGES])
-                if command == 'T':
+                elif command == 'T':
                     generator.build(force=[FORCE_TEMPLATE])
                 elif command == 'R':
                     generator.build()
