@@ -132,7 +132,7 @@ class Generator:
             path = '/' + path
         if not path.endswith(('/', '.html', '.htm')):
             path += '/'
-        meta['canonical_path'] = meta['path'] = '/' + path_prefix + path if path_prefix else  path
+        meta['canonical_path'] = meta['path'] = '/' + path_prefix + path if path_prefix else path
 
         if save_as_deprecated:
             filename = save_as_deprecated
