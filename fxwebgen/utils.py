@@ -1,4 +1,5 @@
 import os
+from argparse import HelpFormatter
 from typing import Optional
 
 
@@ -17,3 +18,9 @@ def abspath(base_path: Optional[str], path: str) -> str:
     if os.path.isabs(path):
         return path
     return os.path.join(base_path, path) if base_path else os.path.abspath(path)
+
+
+class SmartFormatter(HelpFormatter):
+    def _fill_text(self, text: str, width: int, indent: int) -> str:
+        # noinspection PyProtectedMember
+        return '\n'.join(HelpFormatter._fill_text(self, line, width, indent) for line in text.splitlines())

@@ -14,7 +14,7 @@ from fxwebgen.utils import abspath
 
 
 class Option:
-    def __init__(self, name: str, shortcut: Optional[str], description: str, default: Any,
+    def __init__(self, name: str, shortcut: Optional[str], default: Any, description: str,
                  *, required: bool = True, many: bool = False, is_bool: bool = False) -> None:
         self.is_bool = is_bool
         self.required = required
@@ -40,21 +40,44 @@ OPT_DOWNGRADE_HEADINGS = 'downgrade_headings'
 OPT_TITLE_AS_HEADING = 'title_as_heading'
 
 OPTIONS = {opt.name: opt for opt in (
-    Option(OPT_CONFIG, 'c', 'Path to config file [{default}].', 'config.yaml'),
-    Option(OPT_INPUT_DIR, 'i', 'Path to input/root directory [{default}].', '.'),
-    Option(OPT_OUTPUT_DIR, 'o', 'Path to output directory [{default}].', 'build', required=False),
-    Option(OPT_GLOBAL_VARS, 'g', 'Path to global template variables [{default}].', 'data/globals.json', required=False),
-    Option(OPT_PAGES_DIR, 'p', 'Path to a directory with pages [{default}].', 'pages'),
-    Option(OPT_TEMPLATES_DIR, 't', 'Path to templates directory [].', 'templates'),
-    Option(OPT_STATIC_DIRS, 's', 'Path to static files directories.', ['static'], required=False, many=True),
-    Option(OPT_TEMPLATE, '', 'The default template name [{default}].', 'page', required=False),
-    Option(OPT_PATH_PREFIX, '', 'The prefix to add to the website path[{default}].', '', required=False),
-    Option(OPT_SNIPPETS_DIR, '', 'The directory to include snippets from [{default}].', 'snippets', required=False),
-    Option(OPT_ENABLE_SNIPPETS, '', 'Enable or disable snippets [{default}].', True, required=False, is_bool=True),
-    Option(OPT_DOWNGRADE_HEADINGS, '', 'Decrease the level of all headings [{default}].',
-           False, required=False, is_bool=True),
-    Option(OPT_TITLE_AS_HEADING, '', 'Use title as a fallback heading [{default}].',
-           False, required=False, is_bool=True),
+    Option(OPT_CONFIG, 'c', 'config.yaml',
+           'A path to the configuration file in the YAML format {default}. This option is not read from the '
+           'configuration file. If an input/root directory is specified, the configuration file path is searched for '
+           'relative to the input directory. If no input/root directory is specified, the configuration file path is '
+           'searched for relative to the current working directory and the directory of the configuration file is '
+           'then used as the input directory.'),
+    Option(OPT_INPUT_DIR, 'i', '.',
+           'A path to input/root directory {default}. If no input/root directory is specified but a configuration '
+           'file is specified, the directory of the configuration file is then used as the input directory.'),
+    Option(OPT_OUTPUT_DIR, 'o', 'build',
+           'A path to output directory where the generated files are to be written [{default}]. Note that when '
+           '"path_prefix" is specified, the website is exported at the path prefix under the output directory.',
+           required=False),
+    Option(OPT_GLOBAL_VARS, 'g', 'data/globals.json',
+           'A path to a file with global variables {default}. If a configuration file is specified, '
+           'the "variables" property is used as another source of global variables.', required=False),
+    Option(OPT_PAGES_DIR, 'p', 'pages', 'A path to a directory containing pages {default}.'),
+    Option(OPT_TEMPLATES_DIR, 't', 'templates', 'A path to a directory containing templates {default}.'),
+    Option(OPT_STATIC_DIRS, 's', ['static'],
+           'Paths to static files directories, which will be copied verbatim {default}.',
+           required=False, many=True),
+    Option(OPT_TEMPLATE, '', 'page',
+           'A name of the default template to use for page rendering {default}.', required=False),
+    Option(OPT_PATH_PREFIX, None, '',
+           'The prefix to prepend to website paths to the website paths {default}. If the final website path is '
+           '"/", the prefix is empty. If the final path is "/project1/docs/", the prefix is "project1/docs". All '
+           'leading and trailing slashes are automatically stripped though, so you can use "/project1/docs/" too.',
+           required=False),
+    Option(OPT_SNIPPETS_DIR, None, 'snippets',
+           'A directory to include snippets from {default}.', required=False),
+    Option(OPT_ENABLE_SNIPPETS, None, True,
+           'Enable or disable snippets {default}.', required=False, is_bool=True),
+    Option(OPT_DOWNGRADE_HEADINGS, None, False,
+           'Decrease the level of all headings by one {default}.',
+           required=False, is_bool=True),
+    Option(OPT_TITLE_AS_HEADING, None, False,
+           'When no H1 heading is found, add H1 heading containing the page title as a fallback {default}.',
+           required=False, is_bool=True),
 )}
 
 
@@ -64,8 +87,6 @@ def add_arguments(parser: ArgumentParser) -> None:
         if option.shortcut:
             args.append('-' + option.shortcut)
         long = '--' + option.name.replace('_', '-')
-        if option.many and long.endswith('s'):
-            long = long[:-1]
         args.append(long)
 
         kwargs: dict = {'dest': option.name}
@@ -75,8 +96,8 @@ def add_arguments(parser: ArgumentParser) -> None:
             kwargs['type'] = _parse_bool
             default = 'yes' if option.default else 'no'
         else:
-            default = option.default
-        kwargs['help'] = option.description.format(default=default)
+            default = repr(option.default)
+        kwargs['help'] = option.description.format(default=f'(default: {default})')
         parser.add_argument(*args, **kwargs)
 
 
