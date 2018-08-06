@@ -3,6 +3,7 @@
 
 from typing import Optional, cast, Dict
 
+from fxwebgen.context import Context
 from fxwebgen.objects import Thumbnail
 from fxwebgen.typing import StrDict
 
@@ -17,14 +18,14 @@ class Page:
     metadata: StrDict
     references: dict
     thumbnails: Dict[str, Thumbnail]
-    variables: dict
+    ctx: Context
 
     @classmethod
     def test(cls, path: str) -> bool:
         raise NotImplementedError
 
-    def __init__(self, source: str, default_path: str, variables: dict) -> None:
-        self.variables = variables
+    def __init__(self, ctx: Context, source: str, default_path: str) -> None:
+        self.ctx = ctx
         self.default_path = default_path
         self.source = source
         self.body = None

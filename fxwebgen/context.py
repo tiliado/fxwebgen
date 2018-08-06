@@ -16,6 +16,7 @@ class Context:
     pages_dir: Optional[str]
     static_dirs: List[str]
     datasets_dir: Optional[str]
+    snippets_dir: Optional[str]
     datasets: StrDict
     default_template: str
     enable_snippets: bool
@@ -29,6 +30,7 @@ class Context:
                  pages_dir: Optional[str] = None,
                  static_dirs: Optional[List[str]] = None,
                  datasets_dir: Optional[str] = None,
+                 snippets_dir: Optional[str] = None,
                  datasets: Optional[StrDict] = None,
                  interlinks: Optional[StrStrDict] = None,
                  enable_snippets: bool = True,
@@ -37,6 +39,7 @@ class Context:
                  default_template: Optional[str] = None,
                  global_vars: Optional[dict] = None,
                  path_prefix: Optional[str] = None) -> None:
+        self.snippets_dir = snippets_dir
         self.global_vars = global_vars if global_vars is not None else {}
         self.datasets_dir = datasets_dir
         self.static_dirs = static_dirs or []

@@ -1,13 +1,15 @@
 # Copyright 2018 Jiří Janoušek <janousek.jiri@gmail.com>
 # Licensed under BSD-2-Clause license - see file LICENSE for details.
 
+import os
 import re
-from typing import Any, List, Match
+from typing import Any, List, Match, Optional
 
 import markdown
 from markdown.preprocessors import Preprocessor
 from markdown.util import etree
 
+from fxwebgen.context import Context
 from fxwebgen.pages.base import Page
 
 
@@ -18,8 +20,8 @@ class MarkdownPage(Page):
 
     md: markdown.Markdown
 
-    def __init__(self, source: str, default_path: str, variables: dict) -> None:
-        super().__init__(source, default_path[:-2] + 'html', variables)
+    def __init__(self, ctx: Context, source: str, default_path: str) -> None:
+        super().__init__(ctx, source, default_path[:-2] + 'html')
         self.md = markdown.Markdown(
             extensions=[
                 'meta',
@@ -37,7 +39,8 @@ class MarkdownPage(Page):
             ],
             lazy_ol=False)
         self.md.inlinePatterns.add('span_class', SpanWithClassPattern(SpanWithClassPattern.PATTERN), '_end')
-        self.md.preprocessors.add('variables', ExpandVariablesPreprocessor(self.md, variables), '_begin')
+        self.md.preprocessors.add('variables', ExpandVariablesPreprocessor(self.md, ctx.global_vars), '_begin')
+        self.md.preprocessors.add('snippets', SnippetsPreprocessor(self.md, ctx.snippets_dir), '_begin')
 
     def process(self) -> None:
         with open(self.source) as fh:
@@ -100,3 +103,35 @@ class ExpandVariablesPreprocessor(Preprocessor):
         for i, line in enumerate(lines):
             lines[i] = self.PATTERN.sub(expand_variable, line)
         return lines
+
+
+class SnippetsPreprocessor(Preprocessor):
+    PATTERN = re.compile(r"(\\?){\$\s*(\w+(?:[-./]\w+)*)\s*\$}")
+    snippets_dir: Optional[str]
+
+    def __init__(self, md: markdown.Markdown, snippets_dir: Optional[str] = None) -> None:
+        super().__init__(md)
+        self.snippets_dir = snippets_dir
+
+    def run(self, lines: List[str]) -> List[str]:
+        def expand_variable(m: Match) -> Any:
+            escape = m.group(1)
+            if escape:
+                return m.group(0)[1:]
+            filename = m.group(2).strip().strip('/')
+            if not self.snippets_dir:
+                return f'\n```\nError: Snippets dir not set, "{filename}" cannot be included.\n```\n'
+            path = os.path.join(self.snippets_dir, filename)
+            try:
+                with open(path) as fh:
+                    return fh.read()
+            except OSError as e:
+                return f'\n```\n{e}\n```\n'
+
+        new_lines = []
+        for line in lines:
+            if line:
+                new_lines.extend(self.PATTERN.sub(expand_variable, line).splitlines())
+            else:
+                new_lines.append(line)
+        return new_lines

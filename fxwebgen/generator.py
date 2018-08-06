@@ -103,7 +103,7 @@ class Generator:
         page = None
         for factory in self.page_factories:
             if factory.test(source):
-                page = factory(source, default_path, self.ctx.global_vars)
+                page = factory(self.ctx, source, default_path)
                 break
         assert page, f'No page factory for "{source}".'
         page.process()

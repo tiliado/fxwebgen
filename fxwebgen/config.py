@@ -32,6 +32,7 @@ OPT_GLOBAL_VARS = 'global_vars'
 OPT_TEMPLATES_DIR = 'templates_dir'
 OPT_STATIC_DIRS = 'static_dirs'
 OPT_PAGES_DIR = 'pages_dir'
+OPT_SNIPPETS_DIR = 'snippets_dir'
 OPT_TEMPLATE = 'template'
 OPT_PATH_PREFIX = 'path_prefix'
 OPT_ENABLE_SNIPPETS = 'enable_snippets'
@@ -48,6 +49,7 @@ OPTIONS = {opt.name: opt for opt in (
     Option(OPT_STATIC_DIRS, 's', 'Path to static files directories.', ['static'], required=False, many=True),
     Option(OPT_TEMPLATE, '', 'The default template name [{default}].', 'page', required=False),
     Option(OPT_PATH_PREFIX, '', 'The prefix to add to the website path[{default}].', '', required=False),
+    Option(OPT_SNIPPETS_DIR, '', 'The directory to include snippets from [{default}].', 'snippets', required=False),
     Option(OPT_ENABLE_SNIPPETS, '', 'Enable or disable snippets [{default}].', True, required=False, is_bool=True),
     Option(OPT_DOWNGRADE_HEADINGS, '', 'Decrease the level of all headings [{default}].',
            False, required=False, is_bool=True),
@@ -108,6 +110,7 @@ def parse(args: Namespace) -> Context:
     pages_dir = _get_path(input_dir, args, config, OPT_PAGES_DIR, ensure_dir=True)
     templates_dir = _get_path(input_dir, args, config, OPT_TEMPLATES_DIR, ensure_dir=True)
     global_vars_file = _get_path(input_dir, args, config, OPT_GLOBAL_VARS, ensure_file=True, silent=True)
+    snippets_dir = _get_path(input_dir, args, config, OPT_SNIPPETS_DIR, ensure_dir=True, silent=True)
     static_dirs = _get_paths(input_dir, args, config, OPT_STATIC_DIRS, merge=True)
     enable_snippets = _get_bool(args, config, OPT_ENABLE_SNIPPETS)
     downgrade_headings = _get_bool(args, config, OPT_DOWNGRADE_HEADINGS)
@@ -139,6 +142,7 @@ def parse(args: Namespace) -> Context:
                    downgrade_headings=downgrade_headings,
                    title_as_heading=title_as_heading,
                    global_vars=global_vars,
+                   snippets_dir=snippets_dir,
                    path_prefix=path_prefix)
 
 
