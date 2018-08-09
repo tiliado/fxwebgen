@@ -3,9 +3,11 @@
 
 import os
 from collections import defaultdict
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Optional
 
 from fxwebgen.utils import file_mtime
+
+SOURCE_NONE: str = ''
 
 
 class Resource:
@@ -13,20 +15,20 @@ class Resource:
     source: str
     target: str
 
-    def __init__(self, kind: 'Kind', source: str, target: str) -> None:
-        self.source = source
+    def __init__(self, kind: 'Kind', source: Optional[str], target: str) -> None:
+        self.source = source or SOURCE_NONE
         self.target = target
         self.kind = kind
 
     @property
     def fresh(self) -> bool:
-        if not os.path.isfile(self.target):
+        if not all(os.path.isfile(path) for path in (self.target, self.source)):
             return False
         return file_mtime(self.target) >= file_mtime(self.source)
 
     @property
     def source_exists(self) -> bool:
-        return os.path.isfile(self.source)
+        return self.source is SOURCE_NONE or os.path.isfile(self.source)
 
 
 class Kind:
@@ -70,7 +72,9 @@ class ResourceManager:
         self.kinds.append(kind)
         return kind
 
-    def add(self, kind: Kind, source: str, target: str) -> Resource:
+    def add(self, kind: Kind, source: Optional[str], target: str) -> Resource:
+        if not source:
+            source = SOURCE_NONE
         resource = self.targets.get(target)
         if resource:
             if resource.source != source:
