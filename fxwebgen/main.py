@@ -50,7 +50,7 @@ def main(argv: List[str]) -> int:
                     generator.build(force=[FORCE_PAGES])
                 elif command == 'T':
                     generator.build(force=[FORCE_TEMPLATE])
-                elif command == 'R':
+                elif command in ('R', ''):
                     generator.build()
                 elif command == 'Q':
                     break
