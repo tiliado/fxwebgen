@@ -214,14 +214,13 @@ def _get_paths(base_path: Optional[str], args: Namespace, config: dict, name: st
     option = OPTIONS[name]
     if values is not None:
         return _check_dirs([abspath(base_path, value) for value in values])
-    else:
-        try:
-            return _check_dirs([abspath(base_path, value) for value in option.default])
-        except AssertionError as e:
-            if option.required:
-                raise
-            elif not silent:
-                print(e)
+    try:
+        return _check_dirs([abspath(base_path, value) for value in option.default])
+    except AssertionError as e:
+        if option.required:
+            raise
+        elif not silent:
+            print(e)
     return []
 
 
