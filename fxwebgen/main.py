@@ -2,6 +2,7 @@
 # Licensed under BSD-2-Clause license - see file LICENSE for details.
 
 import os
+import sys
 from argparse import ArgumentParser
 from multiprocessing import Process
 from typing import List
@@ -59,3 +60,15 @@ def main(argv: List[str]) -> int:
         finally:
             process.terminate()
     return 0
+
+
+def run() -> None:
+    # noinspection PyBroadException
+    try:
+        code = main(sys.argv)
+    except Exception:  # pylint: disable=broad-except
+        import traceback
+        print("Unexpected failure:", file=sys.stderr)
+        traceback.print_exc()
+        code = 2
+    sys.exit(code)
