@@ -47,7 +47,8 @@ class ImageGalleryProcessor(BlockProcessor):
         del lines[0]
         gallery = etree.SubElement(parent, 'div', {"class": "gallery"})
         cointainer = etree.SubElement(gallery, 'div', {"class": "cointainer"})
-        elm_row = etree.SubElement(cointainer, 'div', {"class": "thumbnails row", "data-toggle": "lightbox"})
+        elm_row = etree.SubElement(cointainer, 'div', {"class": "thumbnails row text-center justify-content-center",
+                                                       "data-toggle": "lightbox"})
         for line in lines:
             m = self.INNER_RE.match(line)
             assert m
