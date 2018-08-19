@@ -22,6 +22,10 @@ class Tag:
 
     def insert(self, position: int, tag: Tag) -> None: ...
 
+    def append(self, tag: Tag) -> None: ...
+
+    def __setitem__(self, key: str, value: Any) -> None: ...
+
 
 class BeautifulSoup(Tag):
     def __init__(self, markup: str = "", features: Any = None, builder: Any = None,

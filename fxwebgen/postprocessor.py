@@ -21,6 +21,7 @@ class PostProcessor:
             extract_toc,
             downgrade_headings,
             add_title_as_heading,
+            bootstrap_admonition,
         ]
 
     def process_page(self, ctx: Context, page: Page) -> None:
@@ -95,3 +96,43 @@ def add_title_as_heading(ctx: Context, page: Page, tree: BeautifulSoup) -> None:
         heading = Tag(name='h1')
         heading.string = page.metadata['title']
         tree.insert(0, heading)
+
+
+ADMONITION_CLASS = 'admonition'
+ADMONITION_TITLE_CLASS = 'admonition-title'
+
+
+def bootstrap_admonition(_ctx: Context, _page: Page, tree: BeautifulSoup) -> None:
+    panels = tree.find_all('div', class_=ADMONITION_CLASS)
+    if panels:
+        for panel in panels:
+            classes = panel["class"]
+            index = classes.index(ADMONITION_CLASS)
+            classes[index] = 'card'
+            kind = classes[index + 1]
+            classes[index + 1] = "border-{}".format(kind)
+            classes.append('border')
+
+            title = panel.find("p", class_=ADMONITION_TITLE_CLASS)
+            panel_contents = panel.contents[:]
+            panel.clear()
+
+            if title:
+                classes = title["class"]
+                try:
+                    index = classes.index(ADMONITION_TITLE_CLASS)
+                    classes[index] = 'card-header'
+                except ValueError as e:
+                    print(e)
+                classes.append('bg-' + kind)
+
+                index = panel_contents.index(title)
+                panel_contents = panel_contents[index + 1:]
+                panel.append(title)
+
+            body = Tag(name="div")
+            body["class"] = ["card-body"]
+            panel.append(body)
+
+            for i in panel_contents:
+                body.append(i)
