@@ -3,7 +3,7 @@
 
 import os
 import re
-from typing import Any, List, Match, Optional
+from typing import Any, List, Match, Optional, Tuple
 
 import markdown
 from markdown.preprocessors import Preprocessor
@@ -113,7 +113,7 @@ class SnippetsPreprocessor(Preprocessor):
         self.snippets_dir = snippets_dir
 
     def run(self, lines: List[str]) -> List[str]:
-        def expand_variable(filename: str) -> str:
+        def load_snippet(filename: str) -> str:
             filename = filename.strip().strip('/')
             if not self.snippets_dir:
                 return f'`Error: Snippets dir not set, "{filename}" cannot be included.`'
@@ -124,35 +124,43 @@ class SnippetsPreprocessor(Preprocessor):
             except OSError as e:
                 return f'`{" ".join(str(e).splitlines())}`'
 
-        new_lines = []
-        for line in lines:
-            buffer: List[str] = []
-            pos: int = 0
-            indent: str = utils.get_indent(line)
-            while True:
-                begin = line.find('{$', pos)
-                if begin < 0:
-                    if buffer:
-                        buffer.append(line[pos:])
-                    break
-                if begin and line[begin - 1] == '\\':
-                    buffer.append(line[pos:begin - 1])
-                    buffer.append('{$')
-                    pos = begin + 2
-                else:
-                    buffer.append(line[pos:begin])
-                    pos = begin + 2
-                    end = line.find('$}', pos)
-                    if not end:
-                        buffer.append(line[begin:pos])
+        def expand_snippets(old_lines: List[str]) -> Tuple[List[str], bool]:
+            new_lines = []
+            expanded = False
+            for line in old_lines:
+                buffer: List[str] = []
+                pos: int = 0
+                indent: str = utils.get_indent(line)
+                while True:
+                    begin = line.find('{$', pos)
+                    if begin < 0:
+                        if buffer:
+                            buffer.append(line[pos:])
+                        break
+                    if begin and line[begin - 1] == '\\':
+                        buffer.append(line[pos:begin - 1])
+                        buffer.append('{$')
+                        pos = begin + 2
                     else:
-                        result = expand_variable(line[pos:end].strip()).strip('\n')
-                        if indent:
-                            result = '\n'.join((indent + s if i else s) for i, s in enumerate(result.splitlines()))
-                        buffer.append(result)
-                        pos = end + 2
-            if buffer:
-                new_lines.extend(''.join(buffer).splitlines())
-            else:
-                new_lines.append(line)
-        return new_lines
+                        buffer.append(line[pos:begin])
+                        pos = begin + 2
+                        end = line.find('$}', pos)
+                        if not end:
+                            buffer.append(line[begin:pos])
+                        else:
+                            expanded = True
+                            result = load_snippet(line[pos:end].strip()).strip('\n')
+                            if indent:
+                                result = '\n'.join((indent + s if i else s) for i, s in enumerate(result.splitlines()))
+                            buffer.append(result)
+                            pos = end + 2
+                if buffer:
+                    new_lines.extend(''.join(buffer).splitlines())
+                else:
+                    new_lines.append(line)
+            return new_lines, expanded
+
+        not_done = True
+        while not_done:
+            lines, not_done = expand_snippets(lines)
+        return lines
