@@ -155,7 +155,10 @@ def resize_images(_ctx: Context, page: Page, tree: BeautifulSoup) -> None:
                 print(f'Warning: Gallery image url must start with ":": "{url}".')
             width, height = imagegallery.parse_size(size)
             elm['src'] = page.webroot + "/" + imagegallery.add_thumbnail(page, url, width, height).filename
+            style = ''
             if width:
-                elm['width'] = width
+                style += f'width: {width}px; max-width: 100%;'
             if height:
-                elm['height'] = height
+                style += f'height: {height}px; max-height: 100%;'
+            if style:
+                elm['style'] = style.strip()
