@@ -9,6 +9,7 @@ class Thumbnail:
     width: Optional[int]
     height: Optional[int]
     filename: str
+    style: str
 
     def __init__(self, original_url: str,
                  width: Optional[int],
@@ -19,6 +20,13 @@ class Thumbnail:
         self.height = height
         basename, extension = original_url.rsplit('.', 1)
         self.filename = f'{basename}[{width or ""}x{height or ""}].{extension}'
+
+        style = ''
+        if width:
+            style += f'width: {width}px; max-width: 100%;'
+        if height:
+            style += f'height: {height}px; max-height: 100%;'
+        self.style = style
 
     def __str__(self) -> str:
         return f'Thumbnail[{self.filename}]'

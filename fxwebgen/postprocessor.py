@@ -144,21 +144,9 @@ def bootstrap_admonition(_ctx: Context, _page: Page, tree: BeautifulSoup) -> Non
 
 def resize_images(_ctx: Context, page: Page, tree: BeautifulSoup) -> None:
     for elm in tree.find_all('img'):
-        try:
-            url, size = elm['src'].split('|')
-        except ValueError:
-            pass
-        else:
-            if url.startswith(':'):
-                url = url[1:]
-            else:
-                print(f'Warning: Gallery image url must start with ":": "{url}".')
-            width, height = imagegallery.parse_size(size)
-            elm['src'] = page.webroot + "/" + imagegallery.add_thumbnail(page, url, width, height).filename
-            style = ''
-            if width:
-                style += f'width: {width}px; max-width: 100%;'
-            if height:
-                style += f'height: {height}px; max-height: 100%;'
-            if style:
-                elm['style'] = style.strip()
+        thumbnail = imagegallery.parse_img_src_as_thumbnail(elm['src'])
+        if thumbnail:
+            page.thumbnails[thumbnail.filename] = thumbnail
+            elm['src'] = ":" + thumbnail.filename
+            if thumbnail.style:
+                elm['style'] = thumbnail.style.strip()

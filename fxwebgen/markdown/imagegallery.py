@@ -2,20 +2,24 @@
 # Licensed under BSD-2-Clause license - see file LICENSE for details.
 
 import re
-from typing import Any, List, Optional, Dict, Tuple, Union
+from typing import Any, List, Optional, Dict, Tuple, Pattern, cast
 
 from markdown import Markdown
-from markdown.util import etree
 from markdown.blockprocessors import BlockProcessor
 from markdown.extensions import Extension
+from markdown.inlinepatterns import BRK, ImagePattern
+from markdown.util import etree
 
 from fxwebgen.objects import Thumbnail
-from fxwebgen.pages import Page
+
+# ![alttxt](http://x.com/) or ![alttxt](<http://x.com/>)
+IMAGE_LINK_RE = r'\+' + BRK + r'\s*\(\s*(<.*?>|([^"\)\s]+\s*"[^"]*"|[^\)\s]*))\s*\)'
 
 
 class ImageGalleryExtension(Extension):
     def extendMarkdown(self, md: Markdown, md_globals: dict) -> None:
         md.parser.blockprocessors.add('gallery', ImageGalleryProcessor(md, md.parser), '>ulist')
+        md.inlinePatterns.add('image_thumbnail_link', ImageLinkPattern(IMAGE_LINK_RE, md), '<link')
 
 
 class ImageGalleryProcessor(BlockProcessor):
@@ -56,7 +60,7 @@ class ImageGalleryProcessor(BlockProcessor):
 
             width, height = parse_size(m.group("params"))
 
-            thumbnail = add_thumbnail(self.md, original_url, width, height)
+            thumbnail = add_thumbnail(self.md, Thumbnail(original_url, width, height))
 
             elm_column = etree.SubElement(elm_row, "div", {"class": col_class})
             elm_a = etree.SubElement(elm_column, "a",
@@ -73,6 +77,38 @@ class ImageGalleryProcessor(BlockProcessor):
             etree.SubElement(elm_a, "img", img_attr)
 
 
+class ImageLinkPattern(ImagePattern):
+    def handleMatch(self, m: Pattern) -> etree.Element:
+        image = super().handleMatch(m)
+        thumbnail = parse_img_src_as_thumbnail(image.attrib['src'])
+        if thumbnail:
+            image.attrib['src'] = ":" + thumbnail.filename
+            if thumbnail.style:
+                image.attrib['style'] = thumbnail.style.strip()
+            add_thumbnail(self.markdown, thumbnail)
+            link = etree.Element('a', {
+                'href': ':' + thumbnail.original_url,
+                'class': 'no-gallery thumbnail',
+            })
+            link.append(image)
+            return link
+        return cast(etree.Element, image)
+
+
+def parse_img_src_as_thumbnail(src: str) -> Optional[Thumbnail]:
+    try:
+        url, size = src.split('|')
+    except ValueError:
+        return None
+    else:
+        if url.startswith(':'):
+            url = url[1:]
+        else:
+            print(f'Warning: Gallery image url must start with ":": "{url}".')
+        width, height = parse_size(size)
+        return Thumbnail(url, width, height)
+
+
 def parse_size(size: str) -> Tuple[Optional[int], Optional[int]]:
     try:
         param_width, param_height = size.split("x")
@@ -83,19 +119,13 @@ def parse_size(size: str) -> Tuple[Optional[int], Optional[int]]:
     return width, height
 
 
-def get_thumbnails(md: Union[Markdown, Page]) -> Dict[str, Thumbnail]:
+def add_thumbnail(md: Markdown, thumbnail: Thumbnail) -> Thumbnail:
     try:
         thumbnails: Dict[str, Thumbnail] = getattr(md, 'thumbnails')
     except AttributeError:
         thumbnails = {}
         setattr(md, 'thumbnails', thumbnails)
-    return thumbnails
-
-
-def add_thumbnail(md: Union[Markdown, Page], original_url: str,
-                  width: Optional[int], height: Optional[int]) -> Thumbnail:
-    thumbnail = Thumbnail(original_url, width, height)
-    get_thumbnails(md)[thumbnail.filename] = thumbnail
+    thumbnails[thumbnail.filename] = thumbnail
     return thumbnail
 
 
