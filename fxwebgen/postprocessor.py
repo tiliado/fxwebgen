@@ -127,6 +127,7 @@ def bootstrap_admonition(_ctx: Context, _page: Page, tree: BeautifulSoup) -> Non
                 except ValueError as e:
                     print(e)
                 classes.append('bg-' + kind)
+                classes.append('text-dark' if kind == 'light' else 'text-light')
 
                 index = panel_contents.index(title)
                 panel_contents = panel_contents[index + 1:]
