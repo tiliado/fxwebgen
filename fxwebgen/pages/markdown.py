@@ -81,9 +81,7 @@ class ExpandVariablesPreprocessor(Preprocessor):
             keys = m.group(2).strip()
             default = m.group(3)
             value: Any = self.variables
-            print(keys)
             for key in keys.split('.'):
-                print(value, key)
                 key = key.strip()
                 try:
                     value = value[key]
@@ -95,7 +93,6 @@ class ExpandVariablesPreprocessor(Preprocessor):
                         print(e)
                         value = None
                         break
-                print('→', value)
             if value is None:
                 value = '!!${ %s }' % keys if default is None else default
             return str(value)
