@@ -114,6 +114,7 @@ def bootstrap_admonition(_ctx: Context, _page: Page, tree: BeautifulSoup) -> Non
             kind = classes[index + 1]
             classes[index + 1] = "border-{}".format(kind)
             classes.append('border')
+            classes.append('mb-3')
 
             title = panel.find("p", class_=ADMONITION_TITLE_CLASS)
             panel_contents = panel.contents[:]
