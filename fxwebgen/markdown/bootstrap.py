@@ -8,9 +8,11 @@ from typing import Optional, Any, List, Match
 
 import markdown
 from markdown.extensions import Extension
-from markdown.blockprocessors import BlockProcessor
+
 from markdown.preprocessors import Preprocessor
 from markdown.util import etree, STX, ETX
+
+from fxwebgen.markdown.base import BlockProcessor, Stash
 
 RE = re.compile(r'(^|\n)(<bootstrap>.*?</bootstrap>\s*?)(\n|$)', re.DOTALL)
 PLACEHOLDER = STX + "bs4stsh:%s" + ETX
@@ -21,16 +23,6 @@ def dedent(text: str, unindent: Optional[str] = None) -> str:
     if '\n' in text:
         return textwrap.dedent(unindent + text if unindent else text)
     return text
-
-
-class Stash(list):
-    def store(self, data: Any) -> str:
-        index = len(self)
-        self.append(data)
-        return PLACEHOLDER % index
-
-    def reset(self) -> None:
-        self.clear()
 
 
 class BootstrapExtension(Extension):
@@ -46,7 +38,7 @@ class BootstrapPreprocessor(Preprocessor):
             stash = getattr(self.markdown, 'bootstrap_stash')
             stash.reset()
         except AttributeError:
-            stash = Stash()
+            stash = Stash(PLACEHOLDER)
             setattr(self.markdown, 'bootstrap_stash', stash)
 
         def replace(m: Match) -> str:
@@ -58,10 +50,6 @@ class BootstrapPreprocessor(Preprocessor):
 
 
 class BootstrapProcessor(BlockProcessor):
-    def __init__(self, md: markdown.Markdown) -> None:
-        super().__init__(md.parser)
-        self.md = md
-
     def test(self, parent: etree.Element, block: str) -> bool:
         return bool(PLACEHOLDER_RE.search(block))
 

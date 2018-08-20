@@ -35,6 +35,7 @@ class MarkdownPage(Page):
                 'abbr',
                 'admonition',
                 'fxwebgen.markdown.bootstrap',
+                'fxwebgen.markdown.divs',
                 'fxwebgen.markdown.imagegallery',
                 'toc',
             ],
