@@ -106,9 +106,9 @@ class DivsProcessor(BlockProcessor):
                     node = process_stash(index=int(match.group(1)))
                 else:
                     unprocessed_lines.append(line)
-                if unprocessed_lines:
-                    unprocessed_blocks.append('\n'.join(unprocessed_lines))
-                    unprocessed_lines.clear()
+            if unprocessed_lines:
+                unprocessed_blocks.append('\n'.join(unprocessed_lines))
+                unprocessed_lines.clear()
         parse_blocks(node.elm)
         blocks.clear()
 
