@@ -20,6 +20,15 @@ def abspath(base_path: Optional[str], path: str) -> str:
     return os.path.join(base_path, path) if base_path else os.path.abspath(path)
 
 
+def get_indent(text: str) -> str:
+    indent = []
+    for char in text:
+        if not char.isspace():
+            break
+        indent.append(char)
+    return ''.join(indent)
+
+
 class SmartFormatter(HelpFormatter):
     def _fill_text(self, text: str, width: int, indent: int) -> str:
         # noinspection PyProtectedMember
