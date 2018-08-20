@@ -9,6 +9,7 @@ import markdown
 from markdown.preprocessors import Preprocessor
 from markdown.util import etree
 
+from fxwebgen import utils
 from fxwebgen.context import Context
 from fxwebgen.pages.base import Page
 
@@ -111,24 +112,46 @@ class SnippetsPreprocessor(Preprocessor):
         self.snippets_dir = snippets_dir
 
     def run(self, lines: List[str]) -> List[str]:
-        def expand_variable(m: Match) -> Any:
-            escape = m.group(1)
-            if escape:
-                return m.group(0)[1:]
-            filename = m.group(2).strip().strip('/')
+        def expand_variable(filename: str) -> str:
+            filename = filename.strip().strip('/')
             if not self.snippets_dir:
-                return f'\n```\nError: Snippets dir not set, "{filename}" cannot be included.\n```\n'
+                return f'`Error: Snippets dir not set, "{filename}" cannot be included.`'
             path = os.path.join(self.snippets_dir, filename)
             try:
                 with open(path) as fh:
                     return fh.read()
             except OSError as e:
-                return f'\n```\n{e}\n```\n'
+                return f'`{" ".join(str(e).splitlines())}`'
 
         new_lines = []
         for line in lines:
-            if line:
-                new_lines.extend(self.PATTERN.sub(expand_variable, line).splitlines())
+            buffer: List[str] = []
+            pos: int = 0
+            indent: str = utils.get_indent(line)
+            while True:
+                begin = line.find('{$', pos)
+                if begin < 0:
+                    if buffer:
+                        buffer.append(line[pos:])
+                    break
+                if begin and line[begin - 1] == '\\':
+                    buffer.append(line[pos:begin - 1])
+                    buffer.append('{$')
+                    pos = begin + 2
+                else:
+                    buffer.append(line[pos:begin])
+                    pos = begin + 2
+                    end = line.find('$}', pos)
+                    if not end:
+                        buffer.append(line[begin:pos])
+                    else:
+                        result = expand_variable(line[pos:end].strip()).strip('\n')
+                        if indent:
+                            result = '\n'.join((indent + s if i else s) for i, s in enumerate(result.splitlines()))
+                        buffer.append(result)
+                        pos = end + 2
+            if buffer:
+                new_lines.extend(''.join(buffer).splitlines())
             else:
                 new_lines.append(line)
         return new_lines
