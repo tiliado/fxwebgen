@@ -2,7 +2,7 @@
 # Licensed under BSD-2-Clause license - see file LICENSE for details.
 
 import re
-from typing import Any, List, Optional, Dict
+from typing import Any, List, Optional, Dict, Tuple, Union
 
 from markdown import Markdown
 from markdown.util import etree
@@ -10,6 +10,7 @@ from markdown.blockprocessors import BlockProcessor
 from markdown.extensions import Extension
 
 from fxwebgen.objects import Thumbnail
+from fxwebgen.pages import Page
 
 
 class ImageGalleryExtension(Extension):
@@ -29,12 +30,6 @@ class ImageGalleryProcessor(BlockProcessor):
         return bool(self.RE.search(block))
 
     def run(self, parent: etree.Element, blocks: List[str]) -> None:
-        try:
-            thumbnails: Dict[str, Thumbnail] = getattr(self.md, 'thumbnails')
-        except AttributeError:
-            thumbnails = {}
-            setattr(self.md, 'thumbnails', thumbnails)
-
         lines = blocks.pop(0).splitlines()
         m = re.search(r"(\d+)cols", lines[0])
         if m:
@@ -59,16 +54,9 @@ class ImageGalleryProcessor(BlockProcessor):
             else:
                 print(f'Warning: Gallery image url must start with ":": "{original_url}".')
 
-            params = m.group("params")
-            try:
-                param_width, param_height = params.split("x")
-            except ValueError:
-                param_width, param_height = params, ''
-            width: Optional[int] = int(param_width) if param_width else None
-            height: Optional[int] = int(param_height) if param_height else None
+            width, height = parse_size(m.group("params"))
 
-            thumbnail = Thumbnail(original_url, width, height)
-            thumbnails[thumbnail.filename] = thumbnail
+            thumbnail = add_thumbnail(self.md, original_url, width, height)
 
             elm_column = etree.SubElement(elm_row, "div", {"class": col_class})
             elm_a = etree.SubElement(elm_column, "a",
@@ -83,6 +71,32 @@ class ImageGalleryProcessor(BlockProcessor):
             if height:
                 img_attr["height"] = str(height)
             etree.SubElement(elm_a, "img", img_attr)
+
+
+def parse_size(size: str) -> Tuple[Optional[int], Optional[int]]:
+    try:
+        param_width, param_height = size.split("x")
+    except ValueError:
+        param_width, param_height = size, ''
+    width: Optional[int] = int(param_width) if param_width else None
+    height: Optional[int] = int(param_height) if param_height else None
+    return width, height
+
+
+def get_thumbnails(md: Union[Markdown, Page]) -> Dict[str, Thumbnail]:
+    try:
+        thumbnails: Dict[str, Thumbnail] = getattr(md, 'thumbnails')
+    except AttributeError:
+        thumbnails = {}
+        setattr(md, 'thumbnails', thumbnails)
+    return thumbnails
+
+
+def add_thumbnail(md: Union[Markdown, Page], original_url: str,
+                  width: Optional[int], height: Optional[int]) -> Thumbnail:
+    thumbnail = Thumbnail(original_url, width, height)
+    get_thumbnails(md)[thumbnail.filename] = thumbnail
+    return thumbnail
 
 
 # noinspection PyPep8Naming

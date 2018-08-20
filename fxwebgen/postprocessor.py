@@ -7,6 +7,7 @@ from typing import Callable, List
 from bs4 import BeautifulSoup, Tag
 
 from fxwebgen.context import Context
+from fxwebgen.markdown import imagegallery
 from fxwebgen.pages import Page
 
 
@@ -15,6 +16,7 @@ class PostProcessor:
 
     def __init__(self) -> None:
         self.post_processors = [
+            resize_images,
             replace_absolute_links,
             replace_pelican_links,
             replace_interlinks,
@@ -136,3 +138,22 @@ def bootstrap_admonition(_ctx: Context, _page: Page, tree: BeautifulSoup) -> Non
 
             for i in panel_contents:
                 body.append(i)
+
+
+def resize_images(_ctx: Context, page: Page, tree: BeautifulSoup) -> None:
+    for elm in tree.find_all('img'):
+        try:
+            url, size = elm['src'].split('|')
+        except ValueError:
+            pass
+        else:
+            if url.startswith(':'):
+                url = url[1:]
+            else:
+                print(f'Warning: Gallery image url must start with ":": "{url}".')
+            width, height = imagegallery.parse_size(size)
+            elm['src'] = page.webroot + "/" + imagegallery.add_thumbnail(page, url, width, height).filename
+            if width:
+                elm['width'] = width
+            if height:
+                elm['height'] = height
