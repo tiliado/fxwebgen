@@ -1,4 +1,4 @@
-FxWebgen (alpha)
+FxWebgen (alpha) [![CircleCI](https://circleci.com/gh/tiliado/fxwebgen.svg?style=svg)](https://circleci.com/gh/tiliado/fxwebgen)
 ================
 
 **A static site generator** used for [Nuvola Apps Project website][1] ([source][1s])
