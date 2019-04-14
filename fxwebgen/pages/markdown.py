@@ -60,7 +60,7 @@ class MarkdownPage(Page):
 
 
 class SpanWithClassPattern(markdown.inlinepatterns.Pattern):
-    PATTERN = r'\{\.\s+([-a-zA-Z_ ]+)\}'
+    PATTERN = r'\{\.\s+([-a-zA-Z0-9_ ]+)\}'
 
     def handleMatch(self, m: Any) -> etree.Element:
         elm = etree.Element('span')
