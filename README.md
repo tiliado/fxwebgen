@@ -11,6 +11,15 @@ If you are looking for such a generator, you should check more mature tools firs
   * [Top Static Site Generators For 2019](https://medium.com/codingthesmartway-com-blog/top-static-site-generators-for-2019-26a4c8afcc05) (December 11, 2018)
   * [Staticsite](https://github.com/spanezz/staticsite) by *Enrico Zini*
 
+Features
+--------
+
+  * Templates: [Jinja2](http://jinja.pocoo.org/).
+  * Page source formats: Markdown, HTML.
+  * Extra Markdown extensions.
+  * JSON data files available during template evaluation.
+  * A preview HTTP server.
+
 Copyright
 ---------
 
