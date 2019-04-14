@@ -4,7 +4,7 @@
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 from typing import Optional
 
-DEFAULT_PORT = 8000
+DEFAULT_PORT = 8001
 DEFAULT_HOST = '127.0.0.1'
 
 
