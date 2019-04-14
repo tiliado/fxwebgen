@@ -12,8 +12,9 @@ help:
 	@echo "Targets:"
 	@echo "- setup: Set up python3 virtual environment."
 	@echo "- lint: Run flake8, mypy and pylint."
+	@echo "- tox: Run checks and tests with tox."
 	@echo "- clean: Clean built files and cache."
-	@echo "- distclean: Clean built files, cache, and venv."
+	@echo "- distclean: Clean built files, cache, tox, and venv."
 	@echo "- push: Push the current git branch."
 
 setup: $(VENV_NAME)/activate
@@ -30,12 +31,15 @@ lint: setup
 	MYPYPATH=stubs ${PYTHON} -m mypy $(MODULE)
 	${PYTHON} -m pylint --rcfile .pylintrc $(MODULE)
 
+tox: setup
+	${PYTHON} -m tox
+
 clean:
 	find . -name __pycache__ -exec rm -rf {} \+
 	rm -rf .mypy_cache
 
 distclean: clean
-	rm -rf venv
+	rm -rf .tox $(VENV_NAME)
 
 push: lint
 	git push && git push --tags
