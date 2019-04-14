@@ -189,7 +189,7 @@ def _get_path(base_path: Optional[str], args: Namespace, config: dict, name: str
     except AssertionError as e:
         if option.required:
             raise
-        elif not silent:
+        if not silent:
             print(e)
     return None
 
@@ -219,7 +219,7 @@ def _get_paths(base_path: Optional[str], args: Namespace, config: dict, name: st
     except AssertionError as e:
         if option.required:
             raise
-        elif not silent:
+        if not silent:
             print(e)
     return []
 
