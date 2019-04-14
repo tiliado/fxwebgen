@@ -1,10 +1,9 @@
 from typing import List
 
-from markdown import odict
-from markdown.util import etree
+from markdown.util import etree, Registry
 
 class BlockParser:
-    blockprocessors: odict.OrderedDict
+    blockprocessors: Registry
 
     def parseChunk(self, parent: etree.Element, text: str) -> None:
         pass

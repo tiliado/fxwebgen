@@ -18,7 +18,7 @@ PLACEHOLDER_RE = re.compile(PLACEHOLDER % r'([0-9]+)')
 
 
 class DivsExtension(Extension):
-    def extendMarkdown(self, md: markdown.Markdown, md_globals: dict) -> None:
+    def extendMarkdown(self, md: markdown.Markdown) -> None:
         md.registerExtension(self)
         md.parser.blockprocessors.add('divs', DivsProcessor(md), '_begin')
         md.preprocessors.add('divs', DivsPreprocessor(md), '<html_block')

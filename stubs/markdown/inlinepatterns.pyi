@@ -3,15 +3,18 @@ from typing import Optional
 
 import markdown as mkd
 
-BRK: str
+IMAGE_LINK_RE: str
 
 class Pattern:
     def __init__(self, pattern: str, markdown_instance: Optional[mkd.Markdown] = None) -> None:
         pass
 
-    def handleMatch(self, m: typing.Pattern) -> mkd.util.etree.Element:
+    def handleMatch(self, m: typing.Pattern, data: typing.Any) \
+            -> typing.Tuple[Optional[mkd.util.etree.Element], Optional[int], Optional[int]]:
         pass
 
+class InlineProcessor(Pattern):
+    ...
 
-class ImagePattern(Pattern):
+class ImageInlineProcessor(InlineProcessor):
     markdown: mkd.Markdown

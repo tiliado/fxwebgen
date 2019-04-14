@@ -27,7 +27,7 @@ class MarkdownPage(Page):
             extensions=[
                 'meta',
                 'sane_lists',
-                'footnotes(PLACE_MARKER=$FOOTNOTES$)',
+                'footnotes',
                 'fenced_code',
                 'codehilite',
                 'def_list',
@@ -39,6 +39,11 @@ class MarkdownPage(Page):
                 'fxwebgen.markdown.imagegallery',
                 'toc',
             ],
+            extension_configs={
+                'footnotes': {
+                    'PLACE_MARKER': '$FOOTNOTES$',
+                }
+            },
             lazy_ol=False)
         self.md.inlinePatterns.add('span_class', SpanWithClassPattern(SpanWithClassPattern.PATTERN), '_end')
         self.md.preprocessors.add('variables', ExpandVariablesPreprocessor(self.md, ctx.global_vars), '_begin')
@@ -59,13 +64,14 @@ class MarkdownPage(Page):
         self.thumbnails.update(getattr(md, 'thumbnails', {}))
 
 
-class SpanWithClassPattern(markdown.inlinepatterns.Pattern):
+class SpanWithClassPattern(markdown.inlinepatterns.InlineProcessor):
     PATTERN = r'\{\.\s+([-a-zA-Z0-9_ ]+)\}'
 
-    def handleMatch(self, m: Any) -> etree.Element:
+    def handleMatch(self, m: Any, _data: Any) \
+            -> Tuple[Optional[etree.Element], Optional[int], Optional[int]]:
         elm = etree.Element('span')
-        elm.attrib['class'] = m.group(2)
-        return elm
+        elm.attrib['class'] = m.group(1)
+        return elm, m.start(0), m.end(0)
 
 
 class ExpandVariablesPreprocessor(Preprocessor):

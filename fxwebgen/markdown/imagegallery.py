@@ -7,19 +7,18 @@ from typing import Any, List, Optional, Dict, Tuple, Pattern, cast
 from markdown import Markdown
 from markdown.blockprocessors import BlockProcessor
 from markdown.extensions import Extension
-from markdown.inlinepatterns import BRK, ImagePattern
+from markdown.inlinepatterns import ImageInlineProcessor
 from markdown.util import etree
 
 from fxwebgen.objects import Thumbnail
 
-# ![alttxt](http://x.com/) or ![alttxt](<http://x.com/>)
-IMAGE_LINK_RE = r'\+' + BRK + r'\s*\(\s*(<.*?>|([^"\)\s]+\s*"[^"]*"|[^\)\s]*))\s*\)'
+IMAGE_LINK_RE = r'\+\['
 
 
 class ImageGalleryExtension(Extension):
-    def extendMarkdown(self, md: Markdown, md_globals: dict) -> None:
+    def extendMarkdown(self, md: Markdown) -> None:
         md.parser.blockprocessors.add('gallery', ImageGalleryProcessor(md, md.parser), '>ulist')
-        md.inlinePatterns.add('image_thumbnail_link', ImageLinkPattern(IMAGE_LINK_RE, md), '<link')
+        md.inlinePatterns.add('image_thumbnail_link', ImageLinkInlineProcessor(IMAGE_LINK_RE, md), '<link')
 
 
 class ImageGalleryProcessor(BlockProcessor):
@@ -77,9 +76,14 @@ class ImageGalleryProcessor(BlockProcessor):
             etree.SubElement(elm_a, "img", img_attr)
 
 
-class ImageLinkPattern(ImagePattern):
-    def handleMatch(self, m: Pattern) -> etree.Element:
-        image = super().handleMatch(m)
+class ImageLinkInlineProcessor(ImageInlineProcessor):
+    def handleMatch(self, m: Pattern, data: Any) \
+            -> Tuple[Optional[etree.Element], Optional[int], Optional[int]]:
+        image, start, end = super().handleMatch(m, data)
+
+        if image is None:
+            return image, start, end
+
         thumbnail = parse_img_src_as_thumbnail(image.attrib['src'])
         if thumbnail:
             image.attrib['src'] = ":" + thumbnail.filename
@@ -91,8 +95,10 @@ class ImageLinkPattern(ImagePattern):
                 'class': 'no-gallery thumbnail',
             })
             link.append(image)
-            return link
-        return cast(etree.Element, image)
+            elm = link
+        else:
+            elm = image
+        return cast(etree.Element, elm), start, end
 
 
 def parse_img_src_as_thumbnail(src: str) -> Optional[Thumbnail]:

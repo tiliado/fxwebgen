@@ -26,7 +26,7 @@ def dedent(text: str, unindent: Optional[str] = None) -> str:
 
 
 class BootstrapExtension(Extension):
-    def extendMarkdown(self, md: markdown.Markdown, md_globals: dict) -> None:
+    def extendMarkdown(self, md: markdown.Markdown) -> None:
         md.registerExtension(self)
         md.parser.blockprocessors.add('bootstrap', BootstrapProcessor(md), '_begin')
         md.preprocessors.add('bootstrap', BootstrapPreprocessor(md), '<html_block')
